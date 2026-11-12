@@ -1,0 +1,124 @@
+services:
+  # ── PostgreSQL 16 with pgvector + pg_trgm ─────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: bidkaro-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bidkaro
+      POSTGRES_PASSWORD: bidkaro
+      POSTGRES_DB: bidkaro
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/docker/pg-init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bidkaro"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Redis (broker + result backend + SSE Pub/Sub) ─────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: bidkaro-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── FastAPI Backend ────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bidkaro-api
+    restart: unless-stopped
+    env_file: ./backend/.env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - uploads:/app/uploads
+      - tender_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ── Celery Worker — Fast (I/O, Ingestion, API calls) ───────────────
+  worker-fast:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bidkaro-worker-fast
+    restart: unless-stopped
+    env_file: ./backend/.env
+    volumes:
+      - ./backend:/app
+      - uploads:/app/uploads
+      - tender_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    command: celery -A app.workers.celery_app worker -Q fast -c 4 --loglevel=info
+
+  # ── Celery Worker — Heavy (doc compilation, --concurrency=1) ──────
+  worker-heavy:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bidkaro-worker-heavy
+    restart: unless-stopped
+    env_file: ./backend/.env
+    volumes:
+      - ./backend:/app
+      - uploads:/app/uploads
+      - tender_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    command: celery -A app.workers.celery_app worker -Q heavy --concurrency=1 --loglevel=info
+
+  # ── Frontend Web UI (Nginx + React SPA) ───────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: bidkaro-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost/ || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  pgdata:
+  uploads:
+  tender_storage:

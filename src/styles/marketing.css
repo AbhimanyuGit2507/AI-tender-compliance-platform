@@ -1,0 +1,229 @@
+/* =====================================================================
+   src/styles/marketing.css
+   BidKaro — World-Class Enterprise Light SaaS Marketing Experience
+   ===================================================================== */
+@import './tokens.css';
+
+.marketing-page {
+  font-family: var(--font-body);
+  background-color: var(--color-bg);
+  background-image: var(--grad-mesh);
+  color: var(--color-text-primary);
+  overflow-x: hidden;
+  position: relative;
+  min-height: 100vh;
+}
+
+/* Subtle Ambient Gradient Accents */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.45;
+  animation: float 22s infinite ease-in-out alternate;
+}
+
+.orb-1 {
+  width: 550px;
+  height: 550px;
+  background: radial-gradient(circle, #3B82F6 0%, rgba(59, 130, 246, 0) 70%);
+  top: -150px;
+  left: -150px;
+  animation-duration: 25s;
+}
+
+.orb-2 {
+  width: 480px;
+  height: 480px;
+  background: radial-gradient(circle, #0284C7 0%, rgba(2, 132, 199, 0) 70%);
+  top: 15%;
+  right: -120px;
+  animation-duration: 20s;
+  animation-delay: -4s;
+}
+
+.orb-3 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, #10B981 0%, rgba(16, 185, 129, 0) 70%);
+  bottom: -200px;
+  left: 25%;
+  animation-duration: 30s;
+  opacity: 0.3;
+}
+
+@keyframes float {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -30px) scale(1.05); }
+  100% { transform: translate(-20px, 20px) scale(0.98); }
+}
+
+/* Glassmorphic Top Nav */
+.glass-nav {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 92%;
+  max-width: 1180px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.03);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  z-index: 100;
+  transition: all var(--transition-base);
+}
+
+.glass-nav:hover {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 8px 30px -4px rgba(15, 23, 42, 0.08);
+}
+
+.nav-logo {
+  font-family: var(--font-heading);
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Hero Typography */
+.hero-title {
+  font-family: var(--font-heading);
+  font-size: clamp(42px, 5.5vw, 76px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+  margin-bottom: 24px;
+  color: var(--color-text-primary);
+}
+
+.hero-gradient {
+  background: linear-gradient(135deg, #2563EB 0%, #0284C7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Bento Grid Cards */
+.bento-card {
+  background: #FFFFFF;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-3xl);
+  padding: 36px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  transition: transform var(--transition-spring), box-shadow var(--transition-base), border-color var(--transition-base);
+}
+
+.bento-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(239, 246, 255, 0.6), transparent 40%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.bento-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--color-blue-border);
+}
+
+.bento-card:hover::before {
+  opacity: 1;
+}
+
+/* Futuristic Buttons */
+.btn-glass {
+  background: var(--grad-primary);
+  color: white;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 28px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(29, 78, 216, 0.4);
+  cursor: pointer;
+  box-shadow: var(--shadow-button), var(--shadow-blue);
+  transition: all var(--transition-base);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-glass:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
+}
+
+.btn-outline-glass {
+  background: #FFFFFF;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 28px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  box-shadow: var(--shadow-xs);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-outline-glass:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* UI Mockup Container */
+.ui-mockup-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  perspective: 1200px;
+}
+
+.ui-mockup {
+  background: #FFFFFF;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-3xl);
+  padding: 24px;
+  box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.1), 0 0 0 1px rgba(15, 23, 42, 0.05);
+  transform: rotateX(3deg) scale(0.97);
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ui-mockup:hover {
+  transform: rotateX(0deg) scale(1);
+}
+
+.footer-marketing {
+  background: #0F172A;
+  color: #F8FAFC;
+  padding: 70px 40px 36px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  margin-top: 100px;
+}

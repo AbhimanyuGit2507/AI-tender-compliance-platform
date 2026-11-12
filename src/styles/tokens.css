@@ -1,0 +1,156 @@
+/* =====================================================================
+   BidKaro Design System — 10/10 Precision Light SaaS Tokens
+   Inspired by world-class enterprise SaaS (Linear, Stripe, Vercel, Ramp)
+   ===================================================================== */
+
+:root {
+  /* ── Canvas & Surfaces (Crisp Multi-Layer Light) ── */
+  --color-bg:               #F8FAFC;   /* Main application background */
+  --color-bg-subtle:        #F1F5F9;   /* Secondary background / insets */
+  --color-bg-deep:          #E2E8F0;   /* Muted borders & structural lines */
+  --color-surface:          #FFFFFF;   /* Pure white card & container surfaces */
+  --color-surface-hover:    #F8FAFC;   /* Subtle surface hover state */
+  --color-surface-2:        #F8FAFC;   /* Inset panels / table headers */
+  --color-surface-active:   #F1F5F9;   /* Clicked / active state */
+  --color-surface-elevated: #FFFFFF;   /* Modals, menus & popovers */
+
+  /* ── Borders & Hairlines ── */
+  --color-border:           #E2E8F0;   /* Standard border */
+  --color-border-subtle:    #F1F5F9;   /* Very light separator */
+  --color-border-strong:    #CBD5E1;   /* Emphasized border on hover */
+  --color-border-focus:     #3B82F6;   /* Focus outline */
+
+  /* ── Brand Precision Blue & Indigo (Primary) ── */
+  --color-blue:             #2563EB;   /* Primary Brand Blue */
+  --color-blue-dark:        #1D4ED8;   /* Primary Hover */
+  --color-blue-light:       #60A5FA;   /* Accent highlight */
+  --color-blue-subtle:      #EFF6FF;   /* Primary soft background */
+  --color-blue-border:      #BFDBFE;   /* Primary soft border */
+  --color-blue-hover:       #1D4ED8;
+  --color-blue-glow:        rgba(37, 99, 235, 0.16);
+
+  /* ── Brand Electric Teal / AI Copilot ── */
+  --color-teal:             #0284C7;   /* RAG / AI Copilot Cyan */
+  --color-teal-dark:        #0369A1;
+  --color-teal-subtle:      #F0F9FF;
+  --color-teal-border:      #BAE6FD;
+  --color-ai:               #0284C7;
+  --color-ai-subtle:        #F0F9FF;
+  --color-ai-border:        #BAE6FD;
+
+  /* ── Semantic Status Colors (Indian Procurement Optimized) ── */
+  /* Success: Compliant / Qualified / Verified */
+  --color-success:          #059669;
+  --color-success-light:    #10B981;
+  --color-success-subtle:   #ECFDF5;
+  --color-success-border:   #A7F3D0;
+
+  /* Warning: Review / Expiring / EMD Payable */
+  --color-warning:          #D97706;
+  --color-warning-light:    #F59E0B;
+  --color-warning-subtle:   #FFFBEB;
+  --color-warning-border:   #FDE68A;
+
+  /* Critical: Disqualified / Missing / Non-Compliant */
+  --color-critical:         #E11D48;
+  --color-critical-light:   #F43F5E;
+  --color-critical-subtle:  #FFF1F2;
+  --color-critical-border:  #FECDD3;
+
+  /* Neutral / Informational */
+  --color-purple:           #7C3AED;
+  --color-purple-subtle:    #F5F3FF;
+  --color-purple-border:    #DDD6FE;
+
+  /* ── Typography & Text Hierarchy ── */
+  --color-text-primary:     #0F172A;   /* Slate 900 — Maximum readability */
+  --color-text-secondary:   #475569;   /* Slate 600 — Balanced secondary text */
+  --color-text-tertiary:    #64748B;   /* Slate 500 — Captions & metadata */
+  --color-text-muted:       #94A3B8;   /* Slate 400 — Placeholders & disabled */
+  --color-text-disabled:    #CBD5E1;
+  --color-text-inverse:     #FFFFFF;
+
+  /* ── Font Stacks ── */
+  --font-heading: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* ── Type Scale ── */
+  --text-xs:   11px;
+  --text-sm:   12px;
+  --text-base: 13.5px;
+  --text-md:   14.5px;
+  --text-lg:   16px;
+  --text-xl:   18px;
+  --text-2xl:  20px;
+  --text-3xl:  24px;
+  --text-4xl:  28px;
+  --text-5xl:  34px;
+  --text-6xl:  42px;
+
+  /* ── Spacing Scale ── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  28px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ── Border Radius (Modern Squircle Ratios) ── */
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   10px;
+  --radius-xl:   12px;
+  --radius-2xl:  16px;
+  --radius-3xl:  20px;
+  --radius-full: 9999px;
+
+  /* ── Precision Layered Shadows (Ultra-High-End SaaS Feel) ── */
+  --shadow-xs:        0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-sm:        0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --shadow-md:        0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-lg:        0 10px 15px -3px rgba(15, 23, 42, 0.06), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
+  --shadow-xl:        0 20px 25px -5px rgba(15, 23, 42, 0.07), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
+  --shadow-card:      0 1px 3px rgba(15, 23, 42, 0.04), 0 0 0 1px rgba(15, 23, 42, 0.05);
+  --shadow-card-hover:0 12px 28px -4px rgba(15, 23, 42, 0.08), 0 4px 8px -2px rgba(15, 23, 42, 0.04), 0 0 0 1px rgba(15, 23, 42, 0.08);
+  --shadow-blue:      0 4px 14px 0 rgba(37, 99, 235, 0.22);
+  --shadow-button:    0 1px 2px 0 rgba(15, 23, 42, 0.08), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+
+  /* ── Gradients ── */
+  --grad-primary: linear-gradient(180deg, #3B82F6 0%, #2563EB 100%);
+  --grad-blue:    linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  --grad-surface: #FFFFFF;
+  --grad-ai:      linear-gradient(135deg, #2563EB 0%, #0284C7 100%);
+  --grad-mesh:    radial-gradient(at 0% 0%, rgba(239, 246, 255, 0.8) 0px, transparent 50%), radial-gradient(at 100% 0%, rgba(240, 253, 250, 0.6) 0px, transparent 50%);
+
+  /* ── Sidebar System ── */
+  --sidebar-width:            248px;
+  --sidebar-width-collapsed:  68px;
+  --sidebar-bg:               #FFFFFF;
+  --sidebar-border:           #E2E8F0;
+  --sidebar-text:             #475569;
+  --sidebar-text-hover:       #0F172A;
+  --sidebar-text-active:      #2563EB;
+  --sidebar-hover-bg:         #F8FAFC;
+  --sidebar-active-bg:        #EFF6FF;
+  --sidebar-active-border:    #2563EB;
+  --sidebar-label:            #94A3B8;
+  --sidebar-icon:             #64748B;
+  --sidebar-icon-hover:       #0F172A;
+  --sidebar-icon-active:      #2563EB;
+
+  /* ── Header ── */
+  --header-height:        60px;
+
+  /* ── Micro-Transitions ── */
+  --transition-fast:      120ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-base:      200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow:      350ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-spring:    320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}

@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%" fill="none">
+  <defs>
+    <!-- Gradient for B and K speed wings -->
+    <linearGradient id="wingOrange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#ff7a18" />
+      <stop offset="50%" stopColor="#f97316" />
+      <stop offset="100%" stopColor="#ea580c" />
+    </linearGradient>
+
+    <!-- Gradient for high-voltage golden lightning bolt -->
+    <linearGradient id="boltGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#fef08a" />
+      <stop offset="35%" stopColor="#fde047" />
+      <stop offset="100%" stopColor="#eab308" />
+    </linearGradient>
+
+    <!-- Subtle ambient glow for the lightning bolt -->
+    <filter id="boltGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="2" stdDeviation="8" floodColor="#f59e0b" floodOpacity="0.6" />
+    </filter>
+  </defs>
+
+  <!-- 100% Transparent Background - Only the Vector Logo Mark -->
+
+  <!-- Left 'B' Aerodynamic Speed Wings -->
+  <!-- Top Wing / Arc -->
+  <path
+    d="M64 150 C64 150 180 150 220 150 C270 150 300 180 285 235 C275 270 235 285 195 285 L105 285 L64 150 Z"
+    fill="url(#wingOrange)"
+  />
+  <!-- Top Wing Trail Feather -->
+  <path
+    d="M95 195 C95 195 170 195 200 195 C225 195 240 210 230 240 C220 260 195 270 170 270 L115 270 Z"
+    fill="#ffffff"
+    fillOpacity="0.08"
+  />
+
+  <!-- Bottom Wing / Arc -->
+  <path
+    d="M105 285 L200 285 C255 285 285 320 270 380 C255 435 210 455 140 455 L40 455 L105 285 Z"
+    fill="url(#wingOrange)"
+  />
+
+  <!-- Horizontal Speed Slices on Left B Spine (Aerodynamic vents) -->
+  <path
+    d="M40 200 L110 200 L100 230 L30 230 Z"
+    fill="url(#wingOrange)"
+  />
+  <path
+    d="M65 245 L125 245 L115 275 L55 275 Z"
+    fill="url(#wingOrange)"
+  />
+
+  <!-- Right 'K' Converging Speed Wings -->
+  <!-- Upper Right Wing -->
+  <path
+    d="M320 280 L440 150 L480 150 L370 280 Z"
+    fill="url(#wingOrange)"
+  />
+  <path
+    d="M370 150 L480 150 L395 245 L325 245 Z"
+    fill="url(#wingOrange)"
+  />
+
+  <!-- Lower Right Wing -->
+  <path
+    d="M310 295 L460 455 L400 455 L275 325 Z"
+    fill="url(#wingOrange)"
+  />
+  <path
+    d="M330 330 L400 455 L460 455 L375 330 Z"
+    fill="url(#wingOrange)"
+  />
+
+  <!-- Central High-Voltage Lightning Bolt (The AI Spark) -->
+  <path
+    d="M305 75 L245 255 L335 255 L260 445 L385 225 L300 225 L345 75 Z"
+    fill="url(#boltGold)"
+    filter="url(#boltGlow)"
+  />
+</svg>
+
