@@ -79,6 +79,64 @@ export function Auth({ defaultMode = 'login' }) {
     }
   }, [countdown]);
 
+  // Initialize official Google Identity Services SDK
+  useEffect(() => {
+    const googleClientId =
+      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+      '726323238381-3l99pmukh4034pr50b5d17pnfj56157q.apps.googleusercontent.com';
+
+    function initGoogle() {
+      if (window.google?.accounts?.id && googleClientId) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: async (response) => {
+              if (response?.credential) {
+                setLoading(true);
+                setError('');
+                try {
+                  await loginWithGoogle(response.credential, companyName.trim() || undefined);
+                  navigate(redirectPath, { replace: true });
+                } catch (err) {
+                  setError(err.message || 'Google Single Sign-On failed. Please try again.');
+                } finally {
+                  setLoading(false);
+                }
+              }
+            },
+            auto_select: false,
+          });
+
+          const btnContainer = document.getElementById('gsi-button-container');
+          if (btnContainer) {
+            btnContainer.innerHTML = '';
+            window.google.accounts.id.renderButton(btnContainer, {
+              theme: isLight ? 'outline' : 'filled_black',
+              size: 'large',
+              width: 380,
+              text: isLogin ? 'signin_with' : 'signup_with',
+              shape: 'rectangular',
+            });
+          }
+        } catch (e) {
+          console.warn('Google Identity initialization error:', e);
+        }
+      }
+    }
+
+    if (window.google?.accounts?.id) {
+      initGoogle();
+    } else {
+      const interval = setInterval(() => {
+        if (window.google?.accounts?.id) {
+          clearInterval(interval);
+          initGoogle();
+        }
+      }, 300);
+      return () => clearInterval(interval);
+    }
+  }, [isLight, isLogin, companyName, navigate, redirectPath, loginWithGoogle]);
+
   async function handleSendOtp(e) {
     if (e) e.preventDefault();
     setError('');
@@ -125,6 +183,19 @@ export function Auth({ defaultMode = 'login' }) {
   async function handleGoogleLogin() {
     setError('');
     setInfoMessage('');
+
+    if (window.google?.accounts?.id) {
+      try {
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            setShowGoogleModal(true);
+          }
+        });
+        return;
+      } catch (err) {
+        console.warn('Google Prompt error, opening fallback modal:', err);
+      }
+    }
 
     if (window.__GOOGLE_CREDENTIAL__) {
       setLoading(true);
@@ -446,6 +517,7 @@ export function Auth({ defaultMode = 'login' }) {
           )}
 
           {/* 1-Click Google Workspace SSO */}
+          <div id="gsi-button-container" style={{ display: 'flex', justifyContent: 'center', marginBottom: 10, minHeight: 40 }} />
           <button
             type="button"
             disabled={loading}
