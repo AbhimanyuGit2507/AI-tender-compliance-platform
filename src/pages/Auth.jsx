@@ -44,10 +44,7 @@ export function Auth({ defaultMode = 'login' }) {
   const [companyName, setCompanyName] = useState('');
   const [name, setName] = useState('');
   const [gstin, setGstin] = useState('');
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [googleCorporateEmail, setGoogleCorporateEmail] = useState('');
-  const [googleCompanyName, setGoogleCompanyName] = useState('');
-  const [googleSsoLoading, setGoogleSsoLoading] = useState(false);
+  const [googleAuthLoading, setGoogleAuthLoading] = useState(false);
 
   const { login, register, sendOtp, verifyOtp, loginWithGoogle, isAuthenticated } = useAuth();
   const themeContext = useTheme();
@@ -92,7 +89,7 @@ export function Auth({ defaultMode = 'login' }) {
             client_id: googleClientId,
             callback: async (response) => {
               if (response?.credential) {
-                setLoading(true);
+                setGoogleAuthLoading(true);
                 setError('');
                 try {
                   await loginWithGoogle(response.credential, companyName.trim() || undefined);
@@ -100,24 +97,12 @@ export function Auth({ defaultMode = 'login' }) {
                 } catch (err) {
                   setError(err.message || 'Google Single Sign-On failed. Please try again.');
                 } finally {
-                  setLoading(false);
+                  setGoogleAuthLoading(false);
                 }
               }
             },
             auto_select: false,
           });
-
-          const btnContainer = document.getElementById('gsi-button-container');
-          if (btnContainer) {
-            btnContainer.innerHTML = '';
-            window.google.accounts.id.renderButton(btnContainer, {
-              theme: isLight ? 'outline' : 'filled_black',
-              size: 'large',
-              width: 380,
-              text: isLogin ? 'signin_with' : 'signup_with',
-              shape: 'rectangular',
-            });
-          }
         } catch (e) {
           console.warn('Google Identity initialization error:', e);
         }
@@ -135,7 +120,7 @@ export function Auth({ defaultMode = 'login' }) {
       }, 300);
       return () => clearInterval(interval);
     }
-  }, [isLight, isLogin, companyName, navigate, redirectPath, loginWithGoogle]);
+  }, [companyName, navigate, redirectPath, loginWithGoogle]);
 
   async function handleSendOtp(e) {
     if (e) e.preventDefault();
@@ -184,57 +169,71 @@ export function Auth({ defaultMode = 'login' }) {
     setError('');
     setInfoMessage('');
 
+    const googleClientId =
+      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+      '726323238381-3l99pmukh4034pr50b5d17pnfj56157q.apps.googleusercontent.com';
+
+    // 1. Production Standard: Official Google OAuth 2.0 Token Client popup
+    if (window.google?.accounts?.oauth2) {
+      try {
+        setGoogleAuthLoading(true);
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: googleClientId,
+          scope: 'openid email profile',
+          callback: async (tokenResponse) => {
+            if (tokenResponse.error) {
+              setGoogleAuthLoading(false);
+              if (tokenResponse.error !== 'access_denied') {
+                setError(`Google Sign-In was cancelled or failed (${tokenResponse.error}).`);
+              }
+              return;
+            }
+            if (tokenResponse.access_token) {
+              try {
+                await loginWithGoogle(tokenResponse.access_token, companyName.trim() || undefined);
+                navigate(redirectPath, { replace: true });
+              } catch (err) {
+                setError(err.message || 'Google Single Sign-On failed. Please try again.');
+              } finally {
+                setGoogleAuthLoading(false);
+              }
+            }
+          },
+          error_callback: (err) => {
+            setGoogleAuthLoading(false);
+            if (err?.type !== 'popup_closed') {
+              setError('Google popup was closed or blocked. Please allow popups for this site.');
+            }
+          },
+        });
+        tokenClient.requestAccessToken({ prompt: 'select_account' });
+        return;
+      } catch (err) {
+        setGoogleAuthLoading(false);
+        console.error('Google OAuth2 popup initialization failed:', err);
+        setError('Failed to open Google authentication window. Please check your browser popup settings.');
+        return;
+      }
+    }
+
+    // 2. Fallback: Google One Tap prompt
     if (window.google?.accounts?.id) {
       try {
+        setGoogleAuthLoading(true);
         window.google.accounts.id.prompt((notification) => {
           if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            setShowGoogleModal(true);
+            setGoogleAuthLoading(false);
+            setError('Google Sign-In prompt is unavailable. Please sign in using your work email address below.');
           }
         });
         return;
       } catch (err) {
-        console.warn('Google Prompt error, opening fallback modal:', err);
+        setGoogleAuthLoading(false);
       }
     }
 
-    if (window.__GOOGLE_CREDENTIAL__) {
-      setLoading(true);
-      try {
-        await loginWithGoogle(window.__GOOGLE_CREDENTIAL__, companyName.trim() || undefined);
-        navigate(redirectPath, { replace: true });
-        return;
-      } catch (err) {
-        setError(err.message || 'Google Single Sign-On failed. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    setGoogleCorporateEmail(email || '');
-    setGoogleCompanyName(companyName || '');
-    setShowGoogleModal(true);
-  }
-
-  async function handleConfirmGoogleSso(e) {
-    if (e) e.preventDefault();
-    if (!googleCorporateEmail || !googleCorporateEmail.includes('@')) {
-      setError('Please provide a valid corporate Google Workspace email.');
-      return;
-    }
-    setGoogleSsoLoading(true);
-    setError('');
-    try {
-      const cleanEmail = googleCorporateEmail.trim().toLowerCase();
-      const contractorName = googleCompanyName.trim() || `${cleanEmail.split('@')[0].toUpperCase()} Contractor`;
-      const credential = `dev-google:${cleanEmail}:${contractorName}`;
-      await loginWithGoogle(credential, googleCompanyName.trim() || undefined);
-      setShowGoogleModal(false);
-      navigate(redirectPath, { replace: true });
-    } catch (err) {
-      setError(err.message || 'Google Single Sign-On failed. Please try again.');
-    } finally {
-      setGoogleSsoLoading(false);
-    }
+    // 3. Google SDK blocked (e.g. ad-blocker)
+    setError('Google Sign-In service is unavailable or blocked by browser extensions. Please allow accounts.google.com or use work email passcode below.');
   }
 
   async function handlePasswordSubmit(e) {
@@ -517,47 +516,68 @@ export function Auth({ defaultMode = 'login' }) {
           )}
 
           {/* 1-Click Google Workspace SSO */}
-          <div id="gsi-button-container" style={{ display: 'flex', justifyContent: 'center', marginBottom: 10, minHeight: 40 }} />
           <button
             type="button"
-            disabled={loading}
+            id="google-sso-btn"
+            disabled={loading || googleAuthLoading}
             onClick={handleGoogleLogin}
             style={{
               width: '100%',
-              padding: '10px 16px',
-              background: 'var(--bg-surface)',
+              padding: '11px 16px',
+              background: isLight ? '#FFFFFF' : 'var(--bg-elevated)',
               border: '1px solid var(--border-strong)',
-              borderRadius: 6,
+              borderRadius: 8,
               color: 'var(--text-primary)',
-              fontSize: 13,
+              fontSize: 13.5,
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 10,
-              cursor: 'pointer',
+              cursor: loading || googleAuthLoading ? 'not-allowed' : 'pointer',
               marginBottom: 20,
+              transition: 'all 0.2s ease',
+              boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.06)' : '0 2px 6px rgba(0,0,0,0.2)',
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-              />
-            </svg>
-            <span>Continue with Google</span>
+            {googleAuthLoading ? (
+              <>
+                <span
+                  style={{
+                    width: 16,
+                    height: 16,
+                    border: '2px solid var(--text-secondary)',
+                    borderTopColor: 'transparent',
+                    borderRadius: '50%',
+                    display: 'inline-block',
+                    animation: 'spin 0.8s linear infinite',
+                  }}
+                />
+                <span>Connecting to Google...</span>
+              </>
+            ) : (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                  />
+                </svg>
+                <span>{isLogin ? 'Sign in with Google' : 'Sign up with Google'}</span>
+              </>
+            )}
           </button>
 
           {/* Divider */}
@@ -935,138 +955,6 @@ export function Auth({ defaultMode = 'login' }) {
           </div>
         </div>
       </div>
-
-      {/* Enterprise Google Workspace SSO Modal */}
-      {showGoogleModal && (
-        <div
-          className="modal-backdrop"
-          onClick={() => !googleSsoLoading && setShowGoogleModal(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.7)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: 20,
-          }}
-        >
-          <div
-            className="surface-card animate-in"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              maxWidth: 440,
-              width: '100%',
-              padding: 28,
-              borderRadius: 16,
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-strong)',
-              boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <div
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 10,
-                  background: 'var(--bg-elevated)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '1px solid var(--border-subtle)',
-                }}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                </svg>
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-                  Google Workspace SSO
-                </h3>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
-                  Verify your corporate contractor identity
-                </p>
-              </div>
-            </div>
-
-            <form onSubmit={handleConfirmGoogleSso}>
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                  Corporate Email
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="director@infrastructure-contractor.in"
-                  value={googleCorporateEmail}
-                  onChange={(e) => setGoogleCorporateEmail(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border-subtle)',
-                    background: inputBg,
-                    color: 'var(--text-primary)',
-                    fontSize: 13,
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                  Company / Firm Entity Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Larsen Infrastructure EPC Ltd"
-                  value={googleCompanyName}
-                  onChange={(e) => setGoogleCompanyName(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border-subtle)',
-                    background: inputBg,
-                    color: 'var(--text-primary)',
-                    fontSize: 13,
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  disabled={googleSsoLoading}
-                  onClick={() => setShowGoogleModal(false)}
-                  className="btn-agent btn-agent-secondary"
-                  style={{ padding: '9px 16px', fontSize: 12.5 }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={googleSsoLoading}
-                  className="btn-agent btn-agent-primary"
-                  style={{ padding: '9px 18px', fontSize: 12.5 }}
-                >
-                  {googleSsoLoading ? 'Authenticating...' : 'Sign In with Google'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

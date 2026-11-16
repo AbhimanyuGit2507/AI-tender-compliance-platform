@@ -173,49 +173,92 @@ class GoogleUserInfo(BaseModel):
 
 async def verify_google_token(credential: str) -> GoogleUserInfo:
     """
-    Verify Google OAuth2 ID Token via Google's tokeninfo endpoint.
-    Includes development mock support for local automated testing.
+    Verify Google OAuth2 ID Token or Access Token via Google's official endpoints.
+    Accepts:
+      1. OpenID Connect JWT ID Token (via https://oauth2.googleapis.com/tokeninfo?id_token=...)
+      2. OAuth2 Access Token (via https://www.googleapis.com/oauth2/v3/userinfo or tokeninfo?access_token=...)
+    Strict production verification: No mocks, no test bypasses.
     """
     import httpx
 
-    cred = credential.strip()
-
-    # Development / Mock support: "dev-google:{email}:{name}"
-    if cred.startswith("dev-google:"):
-        parts = cred.split(":")
-        email = parts[1] if len(parts) > 1 else "demo.contractor@infra.in"
-        name = parts[2] if len(parts) > 2 else "Demo Contractor"
-        return GoogleUserInfo(
-            sub=f"mock-google-{email}",
-            email=email,
-            name=name,
-            email_verified=True,
+    cred = credential.strip() if credential else ""
+    if not cred:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google credential token cannot be empty",
         )
 
-    # Live Google verification
-    url = f"https://oauth2.googleapis.com/tokeninfo?id_token={cred}"
     try:
-        async with httpx.AsyncClient(timeout=8.0) as client:
-            res = await client.get(url)
-            if res.status_code != 200:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid or expired Google authentication token",
-                )
-            data = res.json()
-            email = data.get("email")
-            sub = data.get("sub")
-            if not email or not sub:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Google token missing required email or subject claims",
-                )
-            return GoogleUserInfo(
-                sub=sub,
-                email=email,
-                name=data.get("name"),
-                picture=data.get("picture"),
-                email_verified=data.get("email_verified", "true") in ("true", True),
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # 1. If it looks like a JWT ID token (3 segments separated by dots)
+            if cred.count(".") == 2:
+                id_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={cred}"
+                res = await client.get(id_url)
+                if res.status_code == 200:
+                    data = res.json()
+                    email = data.get("email")
+                    sub = data.get("sub")
+                    if email and sub:
+                        return GoogleUserInfo(
+                            sub=sub,
+                            email=email,
+                            name=data.get("name"),
+                            picture=data.get("picture"),
+                            email_verified=data.get("email_verified", "true") in ("true", True),
+                        )
+
+            # 2. Try as OAuth2 Access Token via Google's official userinfo endpoint
+            userinfo_url = "https://www.googleapis.com/oauth2/v3/userinfo"
+            res = await client.get(userinfo_url, headers={"Authorization": f"Bearer {cred}"})
+            if res.status_code == 200:
+                data = res.json()
+                email = data.get("email")
+                sub = data.get("sub")
+                if email and sub:
+                    return GoogleUserInfo(
+                        sub=sub,
+                        email=email,
+                        name=data.get("name"),
+                        picture=data.get("picture"),
+                        email_verified=data.get("email_verified", True) in ("true", True),
+                    )
+
+            # 3. Fallback: try tokeninfo with access_token parameter
+            token_url = f"https://oauth2.googleapis.com/tokeninfo?access_token={cred}"
+            res = await client.get(token_url)
+            if res.status_code == 200:
+                data = res.json()
+                email = data.get("email")
+                sub = data.get("sub") or data.get("user_id")
+                if email and sub:
+                    return GoogleUserInfo(
+                        sub=sub,
+                        email=email,
+                        name=data.get("name"),
+                        picture=data.get("picture"),
+                        email_verified=data.get("email_verified", "true") in ("true", True),
+                    )
+
+            # 4. Fallback: try tokeninfo with id_token even if count != 2
+            if cred.count(".") != 2:
+                id_url = f"https://oauth2.googleapis.com/tokeninfo?id_token={cred}"
+                res = await client.get(id_url)
+                if res.status_code == 200:
+                    data = res.json()
+                    email = data.get("email")
+                    sub = data.get("sub")
+                    if email and sub:
+                        return GoogleUserInfo(
+                            sub=sub,
+                            email=email,
+                            name=data.get("name"),
+                            picture=data.get("picture"),
+                            email_verified=data.get("email_verified", "true") in ("true", True),
+                        )
+
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired Google authentication credentials. Please sign in again.",
             )
     except HTTPException:
         raise
