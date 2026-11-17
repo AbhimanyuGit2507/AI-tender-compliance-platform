@@ -18,6 +18,7 @@ from app.models.models import (
     EmailLog,
     SystemSetting,
     SubscriptionPlan,
+    NewsletterSubscriber,
 )
 
 __all__ = [
@@ -39,5 +40,6 @@ __all__ = [
     "EmailLog",
     "SystemSetting",
     "SubscriptionPlan",
+    "NewsletterSubscriber",
 ]
 

@@ -45,6 +45,7 @@ export function Auth({ defaultMode = 'login' }) {
   const [name, setName] = useState('');
   const [gstin, setGstin] = useState('');
   const [googleAuthLoading, setGoogleAuthLoading] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(true);
 
   const { login, register, sendOtp, verifyOtp, loginWithGoogle, isAuthenticated } = useAuth();
   const themeContext = useTheme();
@@ -92,7 +93,7 @@ export function Auth({ defaultMode = 'login' }) {
                 setGoogleAuthLoading(true);
                 setError('');
                 try {
-                  await loginWithGoogle(response.credential, companyName.trim() || undefined);
+                  await loginWithGoogle(response.credential, companyName.trim() || undefined, marketingOptIn);
                   navigate(redirectPath, { replace: true });
                 } catch (err) {
                   setError(err.message || 'Google Single Sign-On failed. Please try again.');
@@ -156,7 +157,7 @@ export function Auth({ defaultMode = 'login' }) {
 
     setLoading(true);
     try {
-      await verifyOtp(email.trim(), otpCode.trim(), companyName.trim() || undefined);
+      await verifyOtp(email.trim(), otpCode.trim(), companyName.trim() || undefined, marketingOptIn);
       navigate(redirectPath, { replace: true });
     } catch (err) {
       setError(err.message || 'Verification failed. Please check the passcode and try again.');
@@ -190,7 +191,7 @@ export function Auth({ defaultMode = 'login' }) {
             }
             if (tokenResponse.access_token) {
               try {
-                await loginWithGoogle(tokenResponse.access_token, companyName.trim() || undefined);
+                await loginWithGoogle(tokenResponse.access_token, companyName.trim() || undefined, marketingOptIn);
                 navigate(redirectPath, { replace: true });
               } catch (err) {
                 setError(err.message || 'Google Single Sign-On failed. Please try again.');
@@ -268,6 +269,7 @@ export function Auth({ defaultMode = 'login' }) {
           password,
           name: name.trim() || undefined,
           gstin: gstin.trim() || undefined,
+          marketingOptIn,
         });
       }
       navigate(redirectPath, { replace: true });
@@ -700,6 +702,31 @@ export function Auth({ defaultMode = 'login' }) {
                   />
                 </div>
 
+                {!isLogin && (
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 10,
+                      cursor: 'pointer',
+                      margin: '8px 0 4px',
+                      fontSize: 12,
+                      color: 'var(--text-secondary)',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={marketingOptIn}
+                      onChange={(e) => setMarketingOptIn(e.target.checked)}
+                      style={{ marginTop: 2, accentColor: 'var(--accent-primary)', width: 14, height: 14, flexShrink: 0 }}
+                    />
+                    <span>
+                      Receive high-value tender opportunity alerts, CPWD/NHAI circulars, and weekly procurement intelligence digests via Brevo.
+                    </span>
+                  </label>
+                )}
+
                 <button
                   type="submit"
                   disabled={loading}
@@ -743,6 +770,31 @@ export function Auth({ defaultMode = 'login' }) {
                     }}
                   />
                 </div>
+
+                {!isLogin && (
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 10,
+                      cursor: 'pointer',
+                      margin: '8px 0 4px',
+                      fontSize: 12,
+                      color: 'var(--text-secondary)',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={marketingOptIn}
+                      onChange={(e) => setMarketingOptIn(e.target.checked)}
+                      style={{ marginTop: 2, accentColor: 'var(--accent-primary)', width: 14, height: 14, flexShrink: 0 }}
+                    />
+                    <span>
+                      Receive high-value tender opportunity alerts, CPWD/NHAI circulars, and weekly procurement intelligence digests via Brevo.
+                    </span>
+                  </label>
+                )}
 
                 <button
                   type="submit"

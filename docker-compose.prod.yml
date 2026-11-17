@@ -1,0 +1,150 @@
+# ────────────────────────────────────────────────────────────────
+# BidKaro — Production Docker Compose Configuration
+# Optimized for Linux VPS Deployments (Ubuntu 22.04 / 24.04 / Debian 12)
+# ────────────────────────────────────────────────────────────────
+
+services:
+  # ── PostgreSQL 16 with pgvector + pg_trgm ─────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: bidkaro-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bidkaro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bidkaro_secure_password}
+      POSTGRES_DB: ${POSTGRES_DB:-bidkaro}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/docker/pg-init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bidkaro}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+
+  # ── Redis (broker + result backend + rate limiting) ───────────────
+  redis:
+    image: redis:7-alpine
+    container_name: bidkaro-redis
+    restart: always
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  # ── FastAPI Backend (Multi-Worker Production Server) ──────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bidkaro-api
+    restart: always
+    env_file: .env
+    volumes:
+      - uploads:/app/uploads
+      - tender_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4 --proxy-headers --forwarded-allow-ips='*'
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+
+  # ── Celery Worker — Fast (I/O, Ingestion, API calls) ───────────────
+  worker-fast:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bidkaro-worker-fast
+    restart: always
+    env_file: .env
+    volumes:
+      - uploads:/app/uploads
+      - tender_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    command: celery -A app.workers.celery_app worker -Q fast -c 4 --loglevel=info
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  # ── Celery Worker — Heavy (doc compilation, --concurrency=1) ──────
+  worker-heavy:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bidkaro-worker-heavy
+    restart: always
+    env_file: .env
+    volumes:
+      - uploads:/app/uploads
+      - tender_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    command: celery -A app.workers.celery_app worker -Q heavy --concurrency=1 --loglevel=info
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+
+  # ── Frontend Web UI (Nginx Alpine + Built React SPA) ──────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-726323238381-3l99pmukh4034pr50b5d17pnfj56157q.apps.googleusercontent.com}
+    container_name: bidkaro-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost/ || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads:
+  tender_storage:

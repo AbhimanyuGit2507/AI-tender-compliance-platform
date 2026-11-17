@@ -22,6 +22,7 @@ from app.api import (
     corrigendum,
     discovery,
     generation,
+    newsletter,
     plans,
     rag,
     tenders,
@@ -50,6 +51,17 @@ async def lifespan(app: FastAPI):
             logger.info("embedding_model_warmed_up")
         except Exception as e:
             logger.warning("embedding_warmup_failed", error=str(e))
+
+    # Ensure database tables exist (automatic schema migration / creation on VPS startup)
+    try:
+        from app.core.database import Base, get_engine
+        import app.models  # noqa
+        engine = get_engine()
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("db_schema_ready")
+    except Exception as e:
+        logger.warning("db_schema_init_warning", error=str(e))
 
     yield
 
@@ -200,6 +212,7 @@ def create_app() -> FastAPI:
     app.include_router(generation.router)
     app.include_router(plans.router)
     app.include_router(admin.router)
+    app.include_router(newsletter.router)
 
     # ── Static file serving for local storage ───────────────────────
     if settings.storage_backend == "local":

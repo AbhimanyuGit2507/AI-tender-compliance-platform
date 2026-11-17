@@ -124,7 +124,7 @@ class ApiService {
     return data;
   }
 
-  async register(companyName, name, email, password, gstin = null) {
+  async register(companyName, name, email, password, gstin = null, marketingOptIn = true) {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -134,6 +134,7 @@ class ApiService {
         email,
         password,
         gstin,
+        marketing_opt_in: marketingOptIn,
       }),
     });
     if (!res.ok) {
@@ -166,7 +167,7 @@ class ApiService {
     return await res.json();
   }
 
-  async verifyOtp(email, otp, companyName = null) {
+  async verifyOtp(email, otp, companyName = null, marketingOptIn = true) {
     const res = await fetch('/api/auth/otp/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -174,6 +175,7 @@ class ApiService {
         email,
         otp,
         company_name: companyName || undefined,
+        marketing_opt_in: marketingOptIn,
       }),
     });
     if (!res.ok) {
@@ -189,13 +191,14 @@ class ApiService {
     return data;
   }
 
-  async loginWithGoogle(credential, companyName = null) {
+  async loginWithGoogle(credential, companyName = null, marketingOptIn = true) {
     const res = await fetch('/api/auth/google', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         credential,
         company_name: companyName || undefined,
+        marketing_opt_in: marketingOptIn,
       }),
     });
     if (!res.ok) {
@@ -209,6 +212,52 @@ class ApiService {
     const data = await res.json();
     this.setAuth(data.access_token, data.tenant_id);
     return data;
+  }
+
+  async subscribeNewsletter(email, name = null, company = null, source = 'landing_page') {
+    const res = await fetch('/api/newsletter/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name, company, source }),
+    });
+    if (!res.ok) {
+      let msg = 'Failed to subscribe to newsletter';
+      try {
+        const err = await res.json();
+        msg = err.detail || msg;
+      } catch (_) {}
+      throw new Error(msg);
+    }
+    return await res.json();
+  }
+
+  async unsubscribeNewsletter(email) {
+    const res = await fetch('/api/newsletter/unsubscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      let msg = 'Failed to unsubscribe';
+      try {
+        const err = await res.json();
+        msg = err.detail || msg;
+      } catch (_) {}
+      throw new Error(msg);
+    }
+    return await res.json();
+  }
+
+  async getEmailPreferences() {
+    return await this.request('/api/newsletter/preferences');
+  }
+
+  async updateEmailPreferences(preferences) {
+    return await this.request('/api/newsletter/preferences', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(preferences),
+    });
   }
 
   async getAuditLogs(limit = 50, offset = 0, action = null) {

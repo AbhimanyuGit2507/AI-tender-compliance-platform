@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Zap,
@@ -18,6 +18,8 @@ import {
   Building2,
   FileCheck2,
   Lock,
+  Mail,
+  Bell,
 } from 'lucide-react';
 import { useBidKaroStore } from '../context/BidKaroStoreContext';
 import { useTheme } from '../context/ThemeContext';
@@ -96,6 +98,50 @@ export function Settings() {
   const setTheme = themeContext?.setTheme || (() => {});
   const [purchaseNotice, setPurchaseNotice] = useState(null);
   const [activeTab, setActiveTab] = useState('billing'); // 'billing' | 'settings' | 'ledger'
+
+  // Brevo Email Notification Preferences
+  const [emailPrefs, setEmailPrefs] = useState({
+    marketing_opt_in: true,
+    tender_alerts_opt_in: true,
+    newsletter_opt_in: true,
+  });
+  const [emailPrefsSaving, setEmailPrefsSaving] = useState(false);
+  const [emailPrefsNotice, setEmailPrefsNotice] = useState(null);
+
+  useEffect(() => {
+    async function loadEmailPreferences() {
+      try {
+        const prefs = await api.getEmailPreferences();
+        if (prefs) {
+          setEmailPrefs({
+            marketing_opt_in: Boolean(prefs.marketing_opt_in),
+            tender_alerts_opt_in: Boolean(prefs.tender_alerts_opt_in),
+            newsletter_opt_in: Boolean(prefs.newsletter_opt_in),
+          });
+        }
+      } catch (err) {
+        // Fallback for dev / unauthenticated
+      }
+    }
+    loadEmailPreferences();
+  }, []);
+
+  const handleTogglePref = async (key) => {
+    const updated = { ...emailPrefs, [key]: !emailPrefs[key] };
+    setEmailPrefs(updated);
+    setEmailPrefsSaving(true);
+    setEmailPrefsNotice(null);
+
+    try {
+      await api.updateEmailPreferences(updated);
+      setEmailPrefsNotice('Preferences saved & synchronized with Brevo.');
+      setTimeout(() => setEmailPrefsNotice(null), 3500);
+    } catch (err) {
+      console.warn('Failed to update email preferences:', err);
+    } finally {
+      setEmailPrefsSaving(false);
+    }
+  };
 
   const PLAN_DETAILS = {
     single_pack: {
@@ -672,6 +718,153 @@ export function Settings() {
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#10b981', marginTop: 4 }}>
                   CPWD Works Manual · NHAI EPC · GeM GTC · Railways GFR 170
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Brevo Email Delivery & Notification Opt-In Card */}
+          <div className="glass-pod" style={{ padding: '22px 26px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Mail size={18} color="var(--accent-primary)" />
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>
+                    Email Notifications & Tender Alerts (Brevo Network)
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                    Manage real-time tender intelligence alerts, weekly regulatory digests, and transaction notices.
+                  </div>
+                </div>
+              </div>
+              {emailPrefsNotice && (
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--status-pass-text)', background: 'var(--status-pass-bg)', padding: '4px 10px', borderRadius: 6, border: '1px solid var(--status-pass-border)' }}>
+                  ✓ {emailPrefsNotice}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Option 1: Live Tender Opportunity Alerts */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 16px',
+                  background: 'var(--bg-surface)',
+                  borderRadius: 10,
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
+                    High-Value Tender Opportunity Alerts
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                    Instant alerts for newly published CPWD, NHAI, Railways, and GeM tenders matching your vault criteria.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={emailPrefsSaving}
+                  onClick={() => handleTogglePref('tender_alerts_opt_in')}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 20,
+                    border: 'none',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: emailPrefs.tender_alerts_opt_in ? 'var(--status-pass-bg)' : 'var(--bg-elevated)',
+                    color: emailPrefs.tender_alerts_opt_in ? 'var(--status-pass-text)' : 'var(--text-muted)',
+                    border: emailPrefs.tender_alerts_opt_in ? '1px solid var(--status-pass-border)' : '1px solid var(--border-subtle)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {emailPrefs.tender_alerts_opt_in ? 'Subscribed ✓' : 'Disabled'}
+                </button>
+              </div>
+
+              {/* Option 2: Weekly Procurement Digest */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 16px',
+                  background: 'var(--bg-surface)',
+                  borderRadius: 10,
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Weekly Procurement Intelligence & Regulatory Brief
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                    Weekly breakdown of GFR circulars, common disqualification clauses, and competitive margin trends.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={emailPrefsSaving}
+                  onClick={() => handleTogglePref('newsletter_opt_in')}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 20,
+                    border: 'none',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: emailPrefs.newsletter_opt_in ? 'var(--status-pass-bg)' : 'var(--bg-elevated)',
+                    color: emailPrefs.newsletter_opt_in ? 'var(--status-pass-text)' : 'var(--text-muted)',
+                    border: emailPrefs.newsletter_opt_in ? '1px solid var(--status-pass-border)' : '1px solid var(--border-subtle)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {emailPrefs.newsletter_opt_in ? 'Subscribed ✓' : 'Disabled'}
+                </button>
+              </div>
+
+              {/* Option 3: Marketing & Master Opt-in */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 16px',
+                  background: 'var(--bg-surface)',
+                  borderRadius: 10,
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Platform Announcements & Webinar Invitations
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                    Exclusive invites to pre-bid masterclasses and major BidKaro platform feature updates.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={emailPrefsSaving}
+                  onClick={() => handleTogglePref('marketing_opt_in')}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 20,
+                    border: 'none',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: emailPrefs.marketing_opt_in ? 'var(--status-pass-bg)' : 'var(--bg-elevated)',
+                    color: emailPrefs.marketing_opt_in ? 'var(--status-pass-text)' : 'var(--text-muted)',
+                    border: emailPrefs.marketing_opt_in ? '1px solid var(--status-pass-border)' : '1px solid var(--border-subtle)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {emailPrefs.marketing_opt_in ? 'Subscribed ✓' : 'Disabled'}
+                </button>
               </div>
             </div>
           </div>

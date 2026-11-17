@@ -74,3 +74,4 @@ async def test_valid_google_access_token():
         assert user_info.sub == "google-user-67890"
         assert user_info.email == "partner@infra-firm.com"
         assert user_info.name == "Ananya Verma"
+

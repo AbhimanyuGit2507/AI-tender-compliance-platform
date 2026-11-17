@@ -28,7 +28,10 @@ import {
   ExternalLink,
   Search,
   Play,
+  Mail,
+  Loader2,
 } from 'lucide-react';
+import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GlassCard } from '../components/common/GlassCard';
@@ -206,6 +209,30 @@ export function LandingPage() {
     setIsScanning(true);
     setSelectedTenderId(id);
     setTimeout(() => setIsScanning(false), 240);
+  };
+
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterStatus, setNewsletterStatus] = useState('idle');
+  const [newsletterMsg, setNewsletterMsg] = useState('');
+
+  const handleNewsletterSubmit = async (e) => {
+    e.preventDefault();
+    if (!newsletterEmail || !newsletterEmail.includes('@')) {
+      setNewsletterMsg('Please enter a valid work email.');
+      setNewsletterStatus('error');
+      return;
+    }
+    setNewsletterStatus('loading');
+    setNewsletterMsg('');
+    try {
+      await api.subscribeNewsletter(newsletterEmail, null, null, 'landing_page');
+      setNewsletterStatus('success');
+      setNewsletterMsg('Subscribed! Check your inbox for your confirmation briefing.');
+      setNewsletterEmail('');
+    } catch (err) {
+      setNewsletterStatus('error');
+      setNewsletterMsg(err.message || 'Subscription failed. Please try again.');
+    }
   };
 
   return (
@@ -1881,6 +1908,149 @@ export function LandingPage() {
             <span>Analyze Your Tender Free Now</span>
             <ArrowRight size={16} />
           </button>
+        </div>
+      </section>
+
+      {/* ── Brevo Regulatory Briefs & Opportunity Alerts Newsletter ──── */}
+      <section
+        style={{
+          padding: '60px 24px',
+          maxWidth: 960,
+          margin: '0 auto',
+        }}
+      >
+        <div
+          style={{
+            ...glassPodStyle,
+            padding: '36px 32px',
+            borderRadius: 20,
+            background: isLight ? 'rgba(255, 255, 255, 0.85)' : 'rgba(15, 23, 42, 0.65)',
+            border: isLight ? '1px solid rgba(226, 232, 240, 0.9)' : '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '6px 14px',
+              borderRadius: 20,
+              background: 'rgba(249, 115, 22, 0.12)',
+              border: '1px solid rgba(249, 115, 22, 0.25)',
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--accent-cta)',
+              marginBottom: 16,
+            }}
+          >
+            <Mail size={14} />
+            <span>TENDER REGULATORY INTELLIGENCE</span>
+          </div>
+
+          <h3
+            style={{
+              fontSize: 'clamp(22px, 2.6vw, 28px)',
+              fontWeight: 700,
+              color: 'var(--text-primary)',
+              margin: '0 0 10px 0',
+              fontFamily: 'var(--font-heading)',
+            }}
+          >
+            Weekly Statutory Circulars & High-Value Tender Alerts
+          </h3>
+          <p
+            style={{
+              fontSize: 14.5,
+              color: 'var(--text-secondary)',
+              maxWidth: 620,
+              lineHeight: 1.6,
+              margin: '0 0 24px 0',
+            }}
+          >
+            Get curated CPWD Works Manual amendments, GeM statutory updates, and upcoming ₹10Cr+ EPC and MSME tender opportunities delivered straight to your inbox.
+          </p>
+
+          <form
+            onSubmit={handleNewsletterSubmit}
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 10,
+              width: '100%',
+              maxWidth: 500,
+              justifyContent: 'center',
+            }}
+          >
+            <input
+              type="email"
+              value={newsletterEmail}
+              onChange={(e) => setNewsletterEmail(e.target.value)}
+              placeholder="contractor@infra-firm.com"
+              disabled={newsletterStatus === 'loading'}
+              style={{
+                flex: '1 1 260px',
+                padding: '12px 18px',
+                borderRadius: 10,
+                border: isLight ? '1px solid rgba(203, 213, 225, 0.8)' : '1px solid rgba(255, 255, 255, 0.15)',
+                background: isLight ? '#ffffff' : 'rgba(0, 0, 0, 0.4)',
+                color: 'var(--text-primary)',
+                fontSize: 14,
+                outline: 'none',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={newsletterStatus === 'loading'}
+              style={{
+                padding: '12px 24px',
+                borderRadius: 10,
+                background: 'var(--accent-cta)',
+                color: '#ffffff',
+                border: 'none',
+                fontWeight: 600,
+                fontSize: 14,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                boxShadow: '0 4px 16px rgba(249, 115, 22, 0.35)',
+              }}
+            >
+              {newsletterStatus === 'loading' ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Subscribing...</span>
+                </>
+              ) : (
+                <>
+                  <span>Subscribe Free</span>
+                  <ArrowRight size={14} />
+                </>
+              )}
+            </button>
+          </form>
+
+          {newsletterMsg && (
+            <div
+              style={{
+                marginTop: 14,
+                fontSize: 13,
+                color: newsletterStatus === 'success' ? '#10b981' : '#ef4444',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              {newsletterStatus === 'success' && <CheckCircle2 size={15} />}
+              <span>{newsletterMsg}</span>
+            </div>
+          )}
         </div>
       </section>
 

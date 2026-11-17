@@ -787,6 +787,177 @@ class EmailService:
             tenant_id=tenant_id,
         )
 
+    # ── Brevo Contacts & Marketing Opt-in Management ───────────────────
+    async def sync_brevo_contact(
+        self,
+        email: str,
+        name: str | None = None,
+        company: str | None = None,
+        marketing_opt_in: bool = True,
+        tender_alerts_opt_in: bool = True,
+        newsletter_opt_in: bool = True,
+        list_ids: list[int] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Synchronize subscriber / contact profile with Brevo REST API v3 Contacts.
+        Automatically updates existing contact or registers new contact with attributes.
+        """
+        clean_email = email.strip().lower()
+        api_key = self.settings.brevo_api_key.strip()
+
+        if not api_key:
+            logger.info(
+                "brevo_contact_sync_simulated_no_api_key",
+                email=clean_email,
+                marketing_opt_in=marketing_opt_in,
+                company=company,
+            )
+            return {
+                "success": True,
+                "status": "dev_fallback",
+                "message": f"Contact '{clean_email}' sync simulated (Dev mode)",
+            }
+
+        contacts_url = "https://api.brevo.com/v3/contacts"
+        headers = {
+            "api-key": api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
+        first_name = name.strip() if name else clean_email.split("@")[0].capitalize()
+        attributes = {
+            "FIRSTNAME": first_name,
+            "COMPANY": company.strip() if company else "",
+            "MARKETING_OPT_IN": marketing_opt_in,
+            "TENDER_ALERTS": tender_alerts_opt_in,
+            "NEWSLETTER": newsletter_opt_in,
+            "OPT_IN_DATE": datetime.now().strftime("%Y-%m-%d"),
+        }
+
+        payload: dict[str, Any] = {
+            "email": clean_email,
+            "attributes": attributes,
+            "updateEnabled": True,
+        }
+
+        target_lists = list_ids or ([self.settings.brevo_list_id] if self.settings.brevo_list_id else None)
+        if target_lists:
+            payload["listIds"] = target_lists
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                res = await client.post(contacts_url, json=payload, headers=headers)
+                if res.status_code in (200, 201, 204):
+                    data = res.json() if res.text else {}
+                    logger.info("brevo_contact_synced", email=clean_email, response=data)
+                    return {
+                        "success": True,
+                        "status": "synced",
+                        "contact_id": data.get("id"),
+                        "message": "Contact synchronized with Brevo",
+                    }
+                elif res.status_code == 400:
+                    # Contact might already exist, try direct attribute update
+                    update_url = f"https://api.brevo.com/v3/contacts/{clean_email}"
+                    update_payload: dict[str, Any] = {"attributes": attributes}
+                    if target_lists:
+                        update_payload["listIds"] = target_lists
+                    update_res = await client.put(update_url, json=update_payload, headers=headers)
+                    if update_res.status_code in (200, 204):
+                        logger.info("brevo_contact_updated", email=clean_email)
+                        return {
+                            "success": True,
+                            "status": "updated",
+                            "message": "Existing contact updated in Brevo",
+                        }
+
+                err_msg = f"Brevo Contact API error {res.status_code}: {res.text}"
+                logger.error("brevo_contact_sync_failed", error=err_msg, email=clean_email)
+                return {"success": False, "status": "failed", "error": err_msg}
+        except Exception as e:
+            logger.error("brevo_contact_sync_exception", error=str(e), email=clean_email)
+            return {"success": False, "status": "exception", "error": str(e)}
+
+    async def unsubscribe_brevo_contact(self, email: str) -> dict[str, Any]:
+        """Mark contact as unsubscribed in Brevo and blacklisted from marketing emails."""
+        clean_email = email.strip().lower()
+        api_key = self.settings.brevo_api_key.strip()
+
+        if not api_key:
+            logger.info("brevo_unsubscribe_simulated", email=clean_email)
+            return {"success": True, "status": "dev_fallback"}
+
+        update_url = f"https://api.brevo.com/v3/contacts/{clean_email}"
+        headers = {
+            "api-key": api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        payload = {
+            "emailBlacklisted": True,
+            "attributes": {
+                "MARKETING_OPT_IN": False,
+                "TENDER_ALERTS": False,
+                "NEWSLETTER": False,
+            },
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                res = await client.put(update_url, json=payload, headers=headers)
+                if res.status_code in (200, 204):
+                    logger.info("brevo_contact_unsubscribed", email=clean_email)
+                    return {"success": True, "status": "unsubscribed"}
+                else:
+                    logger.warning("brevo_unsubscribe_failed", code=res.status_code, text=res.text)
+                    return {"success": False, "error": res.text}
+        except Exception as e:
+            logger.error("brevo_unsubscribe_exception", error=str(e))
+            return {"success": False, "error": str(e)}
+
+    async def send_opt_in_confirmation_email(
+        self,
+        to_email: str,
+        name: str | None = None,
+        company: str | None = None,
+    ) -> dict[str, Any]:
+        """Dispatch subscription confirmation & tender intelligence overview email."""
+        first_name = name or "Contractor"
+        company_display = f" ({company})" if company else ""
+        frontend_url = self.settings.frontend_url.rstrip("/")
+
+        inner = f"""
+        <h1>Welcome to BidKaro Tender Intelligence</h1>
+        <p>Dear <strong>{first_name}</strong>{company_display},</p>
+        <p>Thank you for subscribing to BidKaro procurement updates. You have opted in to receive:</p>
+
+        <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 12px; padding: 18px; margin: 20px 0;">
+          <ul style="font-size: 13px; color: #93C5FD; margin: 0; padding-left: 20px; line-height: 1.8;">
+            <li><strong>Live High-Value Tender Alerts:</strong> CPWD, NHAI, Railways, and GeM procurement circulars matching your capabilities.</li>
+            <li><strong>Statutory & Regulatory Briefs:</strong> GFR 170 EMD exemption updates, CPWD Works Manual 2024 revisions, and GST statutory norms.</li>
+            <li><strong>AI Disqualification Analysis:</strong> Pre-bid clause audits and criteria validation before submitting tenders.</li>
+          </ul>
+        </div>
+
+        <p style="font-size: 13px; color: #94A3B8;">
+          You can update your email preferences or unsubscribe at any time via your Workspace Settings or the link below.
+        </p>
+
+        <div style="text-align: center; margin-top: 24px;">
+          <a href="{frontend_url}/auth" style="display: inline-block; background: #3B82F6; color: #FFFFFF; font-weight: 700; font-size: 13px; text-decoration: none; padding: 12px 26px; border-radius: 8px;">
+            Access BidKaro Procurement AI →
+          </a>
+        </div>
+        """
+        html = self._base_email_shell("Tender Intelligence Subscription", "Confirmed", inner)
+        return await self._send_brevo_email(
+            to_email=to_email,
+            subject="Subscribed: BidKaro Government Tender Alerts & Regulatory Intelligence",
+            html_content=html,
+            template_type="opt_in_confirmation",
+        )
+
 
 _email_service_singleton: EmailService | None = None
 

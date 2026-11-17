@@ -89,6 +89,11 @@ class User(Base):
     onboarding_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     # Display name / full name
     display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Brevo Opt-In & Email Subscriptions
+    marketing_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    tender_alerts_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    newsletter_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    opt_in_updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     tenant: Mapped[Tenant] = relationship("Tenant", back_populates="users")
@@ -602,4 +607,28 @@ class SubscriptionPlan(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, server_default="true")
     sort_order: Mapped[int] = mapped_column(Integer, server_default="0")
     updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+# ════════════════════════════════════════════════════════════════════
+# TABLE 19 — newsletter_subscribers (Brevo Lead & Opt-In Captures)
+# ════════════════════════════════════════════════════════════════════
+
+class NewsletterSubscriber(Base):
+    __tablename__ = "newsletter_subscribers"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    company: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    opt_in_source: Mapped[str] = mapped_column(String(64), nullable=False, server_default="landing_page")
+    brevo_contact_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, onupdate=func.now())
+
+    __table_args__ = (
+        Index("ix_newsletter_active", "is_active"),
+        Index("ix_newsletter_created", "created_at"),
+    )
+
 

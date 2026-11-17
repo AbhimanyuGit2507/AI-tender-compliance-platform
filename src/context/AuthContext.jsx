@@ -52,8 +52,8 @@ export function AuthProvider({ children }) {
     return { tokenData: data, user: me };
   };
 
-  const register = async ({ companyName, name, email, password, gstin }) => {
-    const data = await api.register(companyName, name, email, password, gstin);
+  const register = async ({ companyName, name, email, password, gstin, marketingOptIn = true }) => {
+    const data = await api.register(companyName, name, email, password, gstin, marketingOptIn);
     const me = await api.getMe();
     setUser(me);
     return { tokenData: data, user: me };
@@ -63,15 +63,15 @@ export function AuthProvider({ children }) {
     return await api.sendOtp(email);
   };
 
-  const verifyOtp = async (email, otp, companyName) => {
-    const data = await api.verifyOtp(email, otp, companyName);
+  const verifyOtp = async (email, otp, companyName, marketingOptIn = true) => {
+    const data = await api.verifyOtp(email, otp, companyName, marketingOptIn);
     const me = await api.getMe();
     setUser(me);
     return { tokenData: data, user: me };
   };
 
-  const loginWithGoogle = async (credential, companyName) => {
-    const data = await api.loginWithGoogle(credential, companyName);
+  const loginWithGoogle = async (credential, companyName, marketingOptIn = true) => {
+    const data = await api.loginWithGoogle(credential, companyName, marketingOptIn);
     const me = await api.getMe();
     setUser(me);
     return { tokenData: data, user: me };

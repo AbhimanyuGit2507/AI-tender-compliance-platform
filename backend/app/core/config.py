@@ -116,10 +116,12 @@ class Settings(BaseSettings):
     auth_rate_limit_per_minute: int = 20
     trial_rate_limit_per_day: int = 1
 
-    # ── Email Service (Brevo / Sendinblue Transactional) ──────────────
+    # ── Email Service (Brevo / Sendinblue Transactional & Opt-In) ─────
     brevo_api_key: str = ""
     brevo_sender_email: str = "noreply@bidkaro.com"
     brevo_sender_name: str = "BidKaro Procurement AI"
+    brevo_list_id: int | None = None
+    frontend_url: str = "http://localhost:5173"
     otp_expire_seconds: int = 300  # 5 minutes
 
     # ── Admin Authorization ───────────────────────────────────────────

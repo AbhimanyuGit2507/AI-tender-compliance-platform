@@ -41,6 +41,7 @@ class RegisterRequest(BaseModel):
     company_name: str = Field(..., min_length=2)
     name: str | None = None
     gstin: str | None = None
+    marketing_opt_in: bool = True
 
 
 class LoginRequest(BaseModel):
@@ -51,6 +52,7 @@ class LoginRequest(BaseModel):
 class GoogleAuthRequest(BaseModel):
     credential: str = Field(..., min_length=5)
     company_name: str | None = None
+    marketing_opt_in: bool = True
 
 
 class OtpSendRequest(BaseModel):
@@ -68,6 +70,7 @@ class OtpVerifyRequest(BaseModel):
     email: EmailStr
     otp: str = Field(..., min_length=4, max_length=8)
     company_name: str | None = None  # Optional company name if provisioning new account
+    marketing_opt_in: bool = True
 
 
 class TokenResponse(BaseModel):
@@ -111,8 +114,12 @@ async def register(body: RegisterRequest, request: Request, db: AsyncSession = D
         tenant_id=tenant.id,
         email=body.email,
         password_hash=hash_password(body.password),
+        display_name=body.name,
         role="owner",
         is_anonymous=False,
+        marketing_opt_in=body.marketing_opt_in,
+        tender_alerts_opt_in=body.marketing_opt_in,
+        newsletter_opt_in=body.marketing_opt_in,
     )
     db.add(user)
 
@@ -143,7 +150,7 @@ async def register(body: RegisterRequest, request: Request, db: AsyncSession = D
     token = create_access_token(user.id, tenant.id, user.role)
     logger.info("user_registered", user_id=str(user.id), tenant=str(tenant.id))
 
-    # Send Welcome Onboarding Email via Brevo
+    # Send Welcome Onboarding Email & Sync Brevo Opt-In
     try:
         email_svc = get_email_service()
         await email_svc.send_welcome_email(
@@ -152,6 +159,13 @@ async def register(body: RegisterRequest, request: Request, db: AsyncSession = D
             trial_credits=settings.free_trial_credits,
             tenant_id=tenant.id,
         )
+        if body.marketing_opt_in:
+            await email_svc.sync_brevo_contact(
+                email=user.email,
+                name=body.name,
+                company=tenant.name,
+                marketing_opt_in=True,
+            )
     except Exception as e:
         logger.warning("welcome_email_dispatch_failed", error=str(e))
 
@@ -285,8 +299,12 @@ async def google_login(body: GoogleAuthRequest, request: Request, db: AsyncSessi
             email=clean_email,
             password_hash=None,
             google_id=google_user.sub,
+            display_name=google_user.name,
             role="owner",
             is_anonymous=False,
+            marketing_opt_in=body.marketing_opt_in,
+            tender_alerts_opt_in=body.marketing_opt_in,
+            newsletter_opt_in=body.marketing_opt_in,
         )
         db.add(user)
 
@@ -300,7 +318,7 @@ async def google_login(body: GoogleAuthRequest, request: Request, db: AsyncSessi
         db.add(ledger_entry)
         await db.flush()
 
-        # Send welcome email
+        # Send welcome email & Sync Brevo Opt-in
         try:
             email_svc = get_email_service()
             await email_svc.send_welcome_email(
@@ -309,6 +327,13 @@ async def google_login(body: GoogleAuthRequest, request: Request, db: AsyncSessi
                 trial_credits=settings.free_trial_credits,
                 tenant_id=tenant.id,
             )
+            if body.marketing_opt_in:
+                await email_svc.sync_brevo_contact(
+                    email=clean_email,
+                    name=google_user.name,
+                    company=company_name,
+                    marketing_opt_in=True,
+                )
         except Exception as e:
             logger.warning("google_welcome_email_failed", error=str(e))
 
@@ -419,6 +444,9 @@ async def verify_otp(body: OtpVerifyRequest, request: Request, db: AsyncSession 
             password_hash=None,  # Passwordless / OTP user
             role="owner",
             is_anonymous=False,
+            marketing_opt_in=body.marketing_opt_in,
+            tender_alerts_opt_in=body.marketing_opt_in,
+            newsletter_opt_in=body.marketing_opt_in,
         )
         db.add(user)
 
@@ -432,7 +460,7 @@ async def verify_otp(body: OtpVerifyRequest, request: Request, db: AsyncSession 
         db.add(ledger_entry)
         await db.flush()
 
-        # Send welcome email via Brevo
+        # Send welcome email via Brevo & Sync Opt-in
         try:
             await email_service.send_welcome_email(
                 to_email=clean_email,
@@ -440,6 +468,12 @@ async def verify_otp(body: OtpVerifyRequest, request: Request, db: AsyncSession 
                 trial_credits=settings.free_trial_credits,
                 tenant_id=tenant.id,
             )
+            if body.marketing_opt_in:
+                await email_service.sync_brevo_contact(
+                    email=clean_email,
+                    company=company_name,
+                    marketing_opt_in=True,
+                )
         except Exception as e:
             logger.warning("welcome_email_failed_otp", error=str(e))
 
@@ -546,6 +580,9 @@ async def get_me(
         "role": user.role,
         "is_anonymous": user.is_anonymous,
         "onboarding_complete": u.onboarding_complete if u else False,
+        "marketing_opt_in": u.marketing_opt_in if u else True,
+        "tender_alerts_opt_in": u.tender_alerts_opt_in if u else True,
+        "newsletter_opt_in": u.newsletter_opt_in if u else True,
         "credit_balance": tenant.credit_balance if tenant else 0,
         "plan_tier": tenant.plan_tier if tenant else "free",
     }
