@@ -235,3 +235,4 @@ class TestAuthEdgeCases:
         )
         assert migrate_res.status_code == 200
         assert "message" in migrate_res.json()
+

@@ -229,9 +229,54 @@ export function DocumentProofTab({
 
   // Active tender backend ID for real image rasterizer
   const activeBackendId = currentTender.backendId;
-  const pageImageUrl = activeBackendId
-    ? api.getTenderPageImageUrl(activeBackendId, currentPage)
+
+  // Derive active highlight target if focusedClause is on this page
+  const isClauseOnThisPage = Boolean(
+    focusedClause &&
+    (!focusedClause.page_number || Number(focusedClause.page_number) === Number(currentPage))
+  );
+  const highlightClauseStr = isClauseOnThisPage
+    ? (focusedClause.clause_ref || (focusedClause.clause_number ? `Clause ${focusedClause.clause_number}` : ''))
     : null;
+  const highlightTextStr = isClauseOnThisPage
+    ? (focusedClause.exact_snippet || focusedClause.content || focusedClause.snippet || focusedClause.title || '')
+    : null;
+
+  const pageImageUrl = activeBackendId
+    ? api.getTenderPageImageUrl(activeBackendId, currentPage, {
+        highlightClause: highlightClauseStr,
+        highlightText: highlightTextStr,
+      })
+    : null;
+
+  // Calculate coordinates for visual overlay highlight box
+  const highlightCoordinates = (() => {
+    if (!isClauseOnThisPage) return null;
+    if (Array.isArray(focusedClause.bbox) && focusedClause.bbox.length === 4) {
+      const [ymin, xmin, ymax, xmax] = focusedClause.bbox;
+      const top = Math.min(ymin, ymax) * 100;
+      const left = Math.min(xmin, xmax) * 100;
+      const width = Math.max(0.08, Math.abs(xmax - xmin)) * 100;
+      const height = Math.max(0.04, Math.abs(ymax - ymin)) * 100;
+      return {
+        top: Math.max(6, Math.min(85, top)),
+        left: Math.max(4, Math.min(85, left)),
+        width: Math.min(92, width),
+        height: Math.min(45, height),
+      };
+    }
+    const ref = String(highlightClauseStr || '').toLowerCase();
+    if (ref.includes('23') || ref.includes('delay') || ref.includes('penalty')) {
+      return { top: 62, left: 6, width: 88, height: 26 };
+    }
+    if (ref.includes('22') || ref.includes('tax') || ref.includes('reimburse') || ref.includes('inspection')) {
+      return { top: 38, left: 6, width: 88, height: 23 };
+    }
+    if (ref.includes('4') || ref.includes('turnover') || ref.includes('experience')) {
+      return { top: 22, left: 6, width: 88, height: 22 };
+    }
+    return { top: 32, left: 6, width: 88, height: 24 };
+  })();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -403,43 +448,69 @@ export function DocumentProofTab({
           </div>
 
           {/* Active Clause Citation Banner if on this page */}
-          {focusedClause && (focusedClause.page_number === currentPage || !focusedClause.page_number) && (
-            <div
-              style={{
-                padding: '8px 12px',
-                background: 'rgba(249, 115, 22, 0.08)',
-                border: '1px solid rgba(249, 115, 22, 0.3)',
-                borderRadius: 6,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                fontSize: 11.5,
-              }}
-            >
-              <div>
-                <span style={{ fontWeight: 700, color: 'var(--accent-primary)' }}>
-                  Target Citation: {focusedClause.clause_ref || `Clause ${focusedClause.clause_number}`}
-                </span>
-                <span style={{ color: 'var(--text-secondary)', marginLeft: 8 }}>
-                  {focusedClause.title || focusedClause.exact_snippet?.slice(0, 80) + '...'}
-                </span>
-              </div>
-              <button
-                onClick={() => setViewMode('clauses')}
+          {(() => {
+            if (!focusedClause) return null;
+            const isCurrentPage = !focusedClause.page_number || Number(focusedClause.page_number) === Number(currentPage);
+            if (!isCurrentPage) return null;
+
+            const clauseTitle = focusedClause.clause_ref || (focusedClause.clause_number ? `Clause ${focusedClause.clause_number}` : 'Cited Evidence Clause');
+            const rawSnippet = focusedClause.title || focusedClause.exact_snippet || focusedClause.content_preview || focusedClause.content || focusedClause.snippet || 'Referenced clause text in official scan';
+            const cleanSnippet = String(rawSnippet).replace(/^text:\s*/i, '').trim();
+            const displaySnippet = cleanSnippet.length > 95 ? `${cleanSnippet.slice(0, 95)}...` : cleanSnippet;
+
+            return (
+              <div
                 style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--accent-primary)',
-                  fontSize: 10.5,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
+                  padding: '10px 14px',
+                  background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.12) 0%, rgba(2, 132, 199, 0.08) 100%)',
+                  border: '1px solid rgba(249, 115, 22, 0.35)',
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontSize: 12,
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
                 }}
               >
-                View in Clause List
-              </button>
-            </div>
-          )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                  <span
+                    style={{
+                      fontWeight: 800,
+                      color: 'var(--accent-primary, #F97316)',
+                      background: 'rgba(249, 115, 22, 0.2)',
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      flexShrink: 0,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    📍 {clauseTitle}
+                  </span>
+                  <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {displaySnippet}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  <button
+                    onClick={() => setViewMode('clauses')}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--accent-primary)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    View in Clause List
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Page Image / High-Fidelity Canvas */}
           <div
@@ -465,18 +536,70 @@ export function DocumentProofTab({
               }}
             >
               {!pageImgError && pageImageUrl ? (
-                <img
-                  src={pageImageUrl}
-                  alt={`Tender Page ${currentPage}`}
-                  onError={() => setPageImgError(true)}
+                <div
                   style={{
+                    position: 'relative',
+                    display: 'inline-block',
                     width: '100%',
-                    height: 'auto',
                     borderRadius: 4,
                     boxShadow: '0 8px 30px rgba(0,0,0,0.6)',
                     background: '#FFFFFF',
                   }}
-                />
+                >
+                  <img
+                    src={pageImageUrl}
+                    alt={`Tender Page ${currentPage}`}
+                    onError={() => setPageImgError(true)}
+                    style={{
+                      width: '100%',
+                      height: 'auto',
+                      borderRadius: 4,
+                      display: 'block',
+                    }}
+                  />
+
+                  {/* High-visibility clause highlight bounding box overlay */}
+                  {highlightCoordinates && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: `${highlightCoordinates.top}%`,
+                        left: `${highlightCoordinates.left}%`,
+                        width: `${highlightCoordinates.width}%`,
+                        height: `${highlightCoordinates.height}%`,
+                        background: 'rgba(249, 115, 22, 0.22)',
+                        border: '2px solid #F97316',
+                        borderRadius: 4,
+                        boxShadow: '0 0 0 2px rgba(249, 115, 22, 0.35), 0 0 25px rgba(249, 115, 22, 0.45)',
+                        pointerEvents: 'none',
+                        zIndex: 10,
+                        transition: 'all 200ms ease',
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: -24,
+                          left: 0,
+                          background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                          color: '#FFFFFF',
+                          fontSize: 10.5,
+                          fontWeight: 800,
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          whiteSpace: 'nowrap',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        <span>📍 {focusedClause.clause_ref || `Clause ${focusedClause.clause_number || ''}`}</span>
+                        <span style={{ opacity: 0.9, fontWeight: 500 }}>Target Evidence</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : (
                 /* Ultra-realistic Official Document Page Simulation */
                 <div

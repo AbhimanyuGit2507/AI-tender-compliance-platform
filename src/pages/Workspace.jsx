@@ -46,6 +46,7 @@ import { DocumentProofTab } from '../components/workspace/DocumentProofTab';
 import { BOQCorrigendaTab } from '../components/workspace/BOQCorrigendaTab';
 import { BidPackageCompilerTab } from '../components/workspace/BidPackageCompilerTab';
 import { GeminiThinkingBlock } from '../components/workspace/GeminiThinkingBlock';
+import { CopilotMarkdown } from '../components/chat/CopilotMarkdown';
 
 export function Workspace() {
   const { tenderId } = useParams();
@@ -1397,35 +1398,46 @@ export function Workspace() {
                     lineHeight: 1.6,
                   }}
                 >
-                  {(() => {
-                    let textToRender = (msg.text || '').trimStart();
-                    if (/^text:\s*/i.test(textToRender)) {
-                      textToRender = textToRender.replace(/^text:\s*/i, '').trimStart();
-                    }
-                    return textToRender.split('\n').map((line, lIdx) => (
-                      <p key={lIdx} style={{ margin: line.trim() ? '4px 0' : '6px 0' }}>
-                        {line}
-                      </p>
-                    ));
-                  })()}
+                  {isAgent ? (
+                    <CopilotMarkdown
+                      content={msg.text}
+                      onCitationClick={(cite) => {
+                        setCanvasTab('pdf');
+                        setFocusedClause(cite);
+                      }}
+                    />
+                  ) : (
+                    (() => {
+                      let textToRender = (msg.text || '').trimStart();
+                      return textToRender.split('\n').map((line, lIdx) => (
+                        <p key={lIdx} style={{ margin: line.trim() ? '4px 0' : '6px 0' }}>
+                          {line}
+                        </p>
+                      ));
+                    })()
+                  )}
 
                   {/* Citations Bar */}
                   {msg.citations && msg.citations.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10, paddingTop: 8, borderTop: '1px dashed var(--border-subtle)' }}>
-                      {msg.citations.map((cite, cIdx) => (
-                        <span
-                          key={cIdx}
-                          className="citation-pill"
-                          onClick={() => {
-                            setCanvasTab('pdf');
-                            setFocusedClause(cite);
-                          }}
-                          style={{ cursor: 'pointer', fontSize: 11 }}
-                          title="Jump to source clause in Document Proof"
-                        >
-                          📄 {cite.clause_number ? `Clause ${cite.clause_number}` : 'Clause Evidence'} {cite.page_number ? `· Page ${cite.page_number}` : ''}
-                        </span>
-                      ))}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12, paddingTop: 10, borderTop: '1px dashed var(--border-subtle)' }}>
+                      {msg.citations.map((cite, cIdx) => {
+                        const clauseLabel = cite.clause_ref || (cite.clause_number ? `Clause ${cite.clause_number}` : (cite.section_path || 'Clause Evidence'));
+                        const pageLabel = cite.page_number ? `· Page ${cite.page_number}` : '';
+                        return (
+                          <span
+                            key={cIdx}
+                            className="citation-pill"
+                            onClick={() => {
+                              setCanvasTab('pdf');
+                              setFocusedClause(cite);
+                            }}
+                            style={{ cursor: 'pointer', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                            title={`Jump to ${clauseLabel} on Page ${cite.page_number || 'scan'}`}
+                          >
+                            📄 {clauseLabel} {pageLabel}
+                          </span>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

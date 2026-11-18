@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, FileText, CheckCircle, Zap, Shield, Search, ChevronRight, Paperclip, Loader2, Bot, ArrowUpRight } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
+import { CopilotMarkdown } from '../components/chat/CopilotMarkdown';
 
 const SUGGESTED_PROMPTS = [
   { text: "What is the EMD amount and bank guarantee requirement?", icon: FileText, color: "blue" },
@@ -72,7 +73,11 @@ export function Copilot() {
                 </div>
                 
                 <div className={`chat-bubble ${msg.role}`} style={{ marginLeft: msg.role === 'user' ? 'auto' : 0 }}>
-                  <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: msg.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                  {msg.role === 'ai' ? (
+                    <CopilotMarkdown content={msg.text} />
+                  ) : (
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+                  )}
                   
                   {/* Actions */}
                   {msg.actions && (

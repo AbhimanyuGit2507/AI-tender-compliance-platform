@@ -501,6 +501,48 @@ class IngestionEngine:
         doc.close()
         return page_irs
 
+    @staticmethod
+    def _repair_and_parse_json(raw_text: str) -> dict | None:
+        """Robust parser that cleans and repairs truncated or imperfect JSON outputs."""
+        if not raw_text:
+            return None
+        # Locate first opening brace
+        start_idx = raw_text.find("{")
+        if start_idx == -1:
+            return None
+        json_candidate = raw_text[start_idx:].strip()
+
+        # 1. Direct standard parse attempt
+        try:
+            return json.loads(json_candidate)
+        except Exception:
+            pass
+
+        # 2. Try closing open strings and structures
+        # Remove trailing commas
+        cleaned = re.sub(r",\s*([\]\}])", r"\1", json_candidate)
+        quotes = cleaned.count('"') - cleaned.count(r'\"')
+        if quotes % 2 != 0:
+            cleaned += '"'
+
+        for closing in ["]}", '"}]}', "}]}", "}", '"}']:
+            try:
+                return json.loads(cleaned + closing)
+            except Exception:
+                continue
+
+        # 3. Truncate back to the last complete object / requirement
+        last_brace = cleaned.rfind("}")
+        if last_brace != -1:
+            sub = cleaned[: last_brace + 1]
+            for closing in ["]}", "}"]:
+                try:
+                    return json.loads(sub + closing)
+                except Exception:
+                    continue
+
+        return None
+
     # ── Tender fact extraction via Tier 1 LLM ────────────────────────
 
     async def _extract_tender_facts(
@@ -554,10 +596,8 @@ REQUIRED JSON STRUCTURE:
                 max_tokens=4096,
                 temperature=0.0,
             )
-            # Parse JSON from response
-            json_match = re.search(r"\{.*\}", resp.content, re.DOTALL)
-            if json_match:
-                data = json.loads(json_match.group())
+            data = self._repair_and_parse_json(resp.content)
+            if data and isinstance(data, dict):
                 return TenderFacts(**{
                     k: data.get(k, v)
                     for k, v in TenderFacts.__dataclass_fields__.items()
@@ -567,25 +607,42 @@ REQUIRED JSON STRUCTURE:
 
         # ── Deterministic Tier 0 Regex Extraction Fallback ────────────────
         facts = TenderFacts()
-        # Extract title
-        m_title = re.search(r"Name of Work:\s*(.+)", high_signal_text, re.IGNORECASE)
-        if m_title:
-            facts.title = m_title.group(1).strip()
-        else:
-            lines = [l.strip() for l in high_signal_text.split("\n") if l.strip()]
-            facts.title = lines[0][:120] if lines else "Tender Document"
 
-        # Extract authority (procurement authorities only)
-        m_auth = re.search(
-            r"(Maharashtra Jeevan Pradhikaran|NHAI|CPWD|MES|Indian Railways|NTPC|IOCL|BHEL|ONGC|PWD|[A-Z\s]{4,}DEVELOPMENT AUTHORITY|[A-Z\s]{4,}MUNICIPAL CORPORATION|[A-Z\s]{4,}PRADHIKARAN)",
+        # Extract title (prioritize explicit tender title keywords, strip page markers)
+        m_title = re.search(
+            r"(?:TENDER DOCUMENT FOR|NAME OF WORK:?|NOTICE INVITING TENDER FOR|TENDER FOR)\s*([^\n\r]+(?:\n[^\n\r]+)?)",
             high_signal_text,
+            re.IGNORECASE,
+        )
+        if m_title:
+            facts.title = re.sub(r"\s+", " ", m_title.group(0)).strip()[:180]
+        else:
+            m_work = re.search(r"Name of Work:\s*([^\n\r]+)", high_signal_text, re.IGNORECASE)
+            if m_work:
+                facts.title = m_work.group(1).strip()
+            else:
+                lines = [
+                    l.strip() for l in high_signal_text.split("\n")
+                    if l.strip() and not re.match(r"^\[?Page\s*\d+\]?$", l.strip(), re.IGNORECASE) and not re.match(r"^\d+$", l.strip())
+                ]
+                facts.title = lines[0][:140] if lines else "Tender Document"
+
+        # Extract authority (procurement authorities including BRBNMPL / RBI subsidiaries)
+        m_auth = re.search(
+            r"(Bharatiya Reserve Bank Note Mudran Private Limited|BRBNMPL|Reserve Bank of India|Maharashtra Jeevan Pradhikaran|NHAI|CPWD|MES|Indian Railways|NTPC|IOCL|BHEL|ONGC|PWD|[A-Z\s]{4,}DEVELOPMENT AUTHORITY|[A-Z\s]{4,}MUNICIPAL CORPORATION|[A-Z\s]{4,}PRADHIKARAN)",
+            high_signal_text,
+            re.IGNORECASE,
         )
         if m_auth and not re.search(r"unique\s*identification|uidai|income\s*tax|election\s*commission", m_auth.group(1), re.IGNORECASE):
             facts.authority = m_auth.group(1).strip()
 
-        # Extract reference number
-        m_ref = re.search(r"(?:Tender Reference|NIT\s*Ref|Reference\s*Number|Reference\s*No)[^\w]*([A-Z0-9/\-_]+)", high_signal_text, re.IGNORECASE)
-        if m_ref:
+        # Extract reference number (including T.E. No., NIT Ref, etc.)
+        m_ref = re.search(
+            r"(?:T\.?E\.?\s*No\.?|Tender\s*(?:Notice\s*)?No\.?|NIT\s*Ref\.?|Reference\s*No\.?)[^\w]*([A-Za-z0-9/\-_]+)",
+            high_signal_text,
+            re.IGNORECASE,
+        )
+        if m_ref and m_ref.group(1).upper() != "NO":
             facts.reference_no = m_ref.group(1).strip()
 
         # Extract estimated value
@@ -596,13 +653,16 @@ REQUIRED JSON STRUCTURE:
             except Exception:
                 pass
 
-        # Extract EMD
-        m_emd = re.search(r"EMD[^\d]*([\d\.,]+)", high_signal_text, re.IGNORECASE)
-        if m_emd:
-            try:
-                facts.emd_inr = float(m_emd.group(1).replace(",", ""))
-            except Exception:
-                pass
+        # Extract EMD (accurately handle NIL / Nil / Zero EMD vs positive amounts)
+        if re.search(r"(?:EMD|Earnest Money Deposit)[^\n\r]*\b(?:NIL|Nil|Zero|None)\b", high_signal_text, re.IGNORECASE):
+            facts.emd_inr = 0.0
+        else:
+            m_emd = re.search(r"(?:EMD|Earnest Money Deposit)[^\d]*([\d\.,]+)", high_signal_text, re.IGNORECASE)
+            if m_emd and "rule" not in m_emd.group(0).lower():
+                try:
+                    facts.emd_inr = float(m_emd.group(1).replace(",", ""))
+                except Exception:
+                    pass
 
         # Extract turnover requirement
         m_turnover = re.search(r"turnover[^\d]*([\d\.]+)\s*(?:Crore|Cr)", high_signal_text, re.IGNORECASE)
@@ -624,7 +684,7 @@ REQUIRED JSON STRUCTURE:
             facts.raw_requirements.append({
                 "category": "experience",
                 "title": "Similar Work Experience (3/2/1 Rule)",
-                "exact_snippet": "Bidders must have completed similar pipeline works under 1x80, 2x50 or 3x40 rules",
+                "exact_snippet": "Bidders must have completed similar works under 1x80, 2x50 or 3x40 rules",
                 "comparator": "gte",
                 "numeric_value": facts.estimated_value_inr or 360000000.0,
                 "unit": "INR",

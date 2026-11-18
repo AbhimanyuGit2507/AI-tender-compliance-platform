@@ -131,10 +131,33 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// Safe fallback state for React Fast Refresh / HMR transitions
+const DEFAULT_AUTH_STATE = {
+  user: null,
+  tenant: null,
+  token: null,
+  isAuthenticated: false,
+  isLoading: true,
+  isGuestTrial: false,
+  needsOnboarding: false,
+  login: async () => {},
+  register: async () => {},
+  sendOtp: async () => {},
+  verifyOtp: async () => {},
+  loginWithGoogle: async () => {},
+  forgotPassword: async () => {},
+  resetPassword: async () => {},
+  migrateGuestSession: async () => {},
+  logout: () => {},
+  refreshUser: async () => {},
+  markOnboardingComplete: () => {},
+};
+
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    // During Fast Refresh or unmount/remount ticks, context might be briefly unavailable
+    return DEFAULT_AUTH_STATE;
   }
   return context;
 }

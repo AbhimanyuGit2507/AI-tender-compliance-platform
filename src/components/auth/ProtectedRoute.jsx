@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { Sparkles } from 'lucide-react';
 
 export function ProtectedRoute({ children }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const auth = useAuth() || {};
+  const { isAuthenticated = false, isLoading = true } = auth;
   const location = useLocation();
 
   if (isLoading) {

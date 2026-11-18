@@ -318,11 +318,14 @@ async def get_tender(
 async def get_tender_page_image(
     tender_id: uuid.UUID,
     page_number: int,
+    highlight_clause: str | None = None,
+    highlight_text: str | None = None,
     db: AsyncSession = Depends(get_db),
     user: CurrentUser | None = Depends(get_optional_user),
 ):
     """
     Renders page_number (1-indexed) of the tender PDF at 150 DPI to PNG bytes.
+    Optionally highlights cited clause text/numbers using PyMuPDF annotations.
     Returns 404 if the document or page is not available.
     """
     if page_number < 1:
@@ -355,13 +358,42 @@ async def get_tender_page_image(
         if page_number > len(pdf_doc):
             raise HTTPException(status_code=404, detail=f"Page {page_number} exceeds document page count {len(pdf_doc)}")
         page = pdf_doc.load_page(page_number - 1)
+
+        # Highlight clause or text if requested
+        if highlight_clause or highlight_text:
+            search_terms = []
+            if highlight_clause:
+                search_terms.append(highlight_clause.strip())
+                # If clause is "Clause 22.9", also search for "22.9"
+                clean_num = re.sub(r"[^\d.]", "", highlight_clause).strip()
+                if clean_num and clean_num != highlight_clause:
+                    search_terms.append(clean_num)
+            if highlight_text:
+                # Add snippet prefix
+                clean_snippet = re.sub(r"\s+", " ", highlight_text).strip()
+                if len(clean_snippet) > 8:
+                    search_terms.append(clean_snippet[:40])
+
+            highlight_applied = False
+            for term in search_terms:
+                if len(term) < 2:
+                    continue
+                quads = page.search_for(term)
+                if quads:
+                    for quad in quads:
+                        annot = page.add_highlight_annot(quad)
+                        annot.set_colors(stroke=(1.0, 0.65, 0.05))  # Electric Amber
+                        annot.update()
+                    highlight_applied = True
+                    break
+
         pix = page.get_pixmap(dpi=150)
         png_bytes = pix.tobytes("png")
         return Response(
             content=png_bytes,
             media_type="image/png",
             headers={
-                "Cache-Control": "public, max-age=86400",
+                "Cache-Control": "private, max-age=300" if (highlight_clause or highlight_text) else "public, max-age=86400",
                 "Content-Disposition": f"inline; filename=page_{page_number}.png",
             },
         )

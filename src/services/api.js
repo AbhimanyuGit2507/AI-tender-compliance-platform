@@ -416,8 +416,13 @@ class ApiService {
     });
   }
 
-  getTenderPageImageUrl(tenderId, pageNumber = 1) {
-    return `/api/tenders/${tenderId}/pages/${pageNumber}/image`;
+  getTenderPageImageUrl(tenderId, pageNumber = 1, options = {}) {
+    let url = `/api/tenders/${tenderId}/pages/${pageNumber}/image`;
+    const params = new URLSearchParams();
+    if (options.highlightClause) params.set('highlight_clause', options.highlightClause);
+    if (options.highlightText) params.set('highlight_text', options.highlightText);
+    const qs = params.toString();
+    return qs ? `${url}?${qs}` : url;
   }
 
   subscribeTenderStatus(tenderId, onProgress, onComplete, onError) {

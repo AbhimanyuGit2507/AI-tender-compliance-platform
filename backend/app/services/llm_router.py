@@ -670,10 +670,13 @@ class LLMRouter:
         output_cost: float,
         response_format: dict | None = None,
     ) -> LLMResponse:
-        # Guard Groq free on-demand tier OTPM (Limit 1,000 output tokens per request)
+        # Guard Groq free on-demand tier OTPM limits
         effective_max_tokens = max_tokens
-        if "groq" in provider_name.lower() and effective_max_tokens > 600:
-            effective_max_tokens = 600
+        if "groq" in provider_name.lower():
+            if "gpt-oss" in model.lower():
+                effective_max_tokens = min(max_tokens, 2048)
+            elif effective_max_tokens > 900:
+                effective_max_tokens = 900
 
         payload: dict[str, Any] = {
             "model": model,
