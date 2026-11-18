@@ -253,26 +253,26 @@ export function DocumentProofTab({
   const highlightCoordinates = (() => {
     if (!isClauseOnThisPage) return null;
     if (Array.isArray(focusedClause.bbox) && focusedClause.bbox.length === 4) {
-      const [ymin, xmin, ymax, xmax] = focusedClause.bbox;
-      const top = Math.min(ymin, ymax) * 100;
-      const left = Math.min(xmin, xmax) * 100;
-      const width = Math.max(0.08, Math.abs(xmax - xmin)) * 100;
-      const height = Math.max(0.04, Math.abs(ymax - ymin)) * 100;
+      // bbox is stored as normalized [x0, y0, x1, y1] (0.0 to 1.0)
+      const [b0, b1, b2, b3] = focusedClause.bbox;
+      const top = Math.min(b1, b3) * 100;
+      const height = Math.max(0.06, Math.abs(b3 - b1)) * 100;
       return {
-        top: Math.max(6, Math.min(85, top)),
-        left: Math.max(4, Math.min(85, left)),
-        width: Math.min(92, width),
-        height: Math.min(45, height),
+        top: Math.max(8, Math.min(84, top)),
+        left: 6,
+        width: 88,
+        height: Math.min(45, Math.max(8, height)),
       };
     }
     const ref = String(highlightClauseStr || '').toLowerCase();
-    if (ref.includes('23') || ref.includes('delay') || ref.includes('penalty')) {
+    const txt = String(highlightTextStr || '').toLowerCase();
+    if (ref.includes('23') || txt.includes('delay') || txt.includes('penalty')) {
       return { top: 62, left: 6, width: 88, height: 26 };
     }
-    if (ref.includes('22') || ref.includes('tax') || ref.includes('reimburse') || ref.includes('inspection')) {
+    if (ref.includes('22') || txt.includes('tax') || txt.includes('reimburse') || txt.includes('inspection')) {
       return { top: 38, left: 6, width: 88, height: 23 };
     }
-    if (ref.includes('4') || ref.includes('turnover') || ref.includes('experience')) {
+    if (ref.includes('4') || txt.includes('turnover') || txt.includes('capacity')) {
       return { top: 22, left: 6, width: 88, height: 22 };
     }
     return { top: 32, left: 6, width: 88, height: 24 };

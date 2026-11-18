@@ -29,7 +29,60 @@ const BidKaroStoreContext = createContext(null);
 export function BidKaroStoreProvider({ children }) {
   const [credits, setCredits] = useState(0);
   const [planTier, setPlanTier] = useState('growth_pack');
-  const [dailyFreeAvailable, setDailyFreeAvailable] = useState(true);
+
+  const getTodayDateStr = () => new Date().toISOString().slice(0, 10);
+
+  const [dailyFreePass, setDailyFreePass] = useState(() => {
+    try {
+      const stored = localStorage.getItem('bidkaro_daily_free_pass');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.claimedDate === getTodayDateStr()) {
+          return {
+            available: false,
+            claimedDate: parsed.claimedDate,
+            claimedAt: parsed.claimedAt,
+            tenderTitle: parsed.tenderTitle || 'Tender Analysis',
+          };
+        }
+      }
+    } catch (_) {}
+    return {
+      available: true,
+      claimedDate: null,
+      claimedAt: null,
+      tenderTitle: null,
+    };
+  });
+
+  const dailyFreeAvailable = dailyFreePass.available;
+
+  const consumeDailyFreePass = (tenderTitle = 'Notice Inviting Tender') => {
+    const today = getTodayDateStr();
+    const nowIso = new Date().toISOString();
+    const updated = {
+      available: false,
+      claimedDate: today,
+      claimedAt: nowIso,
+      tenderTitle,
+    };
+    try {
+      localStorage.setItem('bidkaro_daily_free_pass', JSON.stringify(updated));
+    } catch (_) {}
+    setDailyFreePass(updated);
+  };
+
+  const setDailyFreeAvailable = (val) => {
+    if (!val) {
+      consumeDailyFreePass();
+    } else {
+      try {
+        localStorage.removeItem('bidkaro_daily_free_pass');
+      } catch (_) {}
+      setDailyFreePass({ available: true, claimedDate: null, claimedAt: null, tenderTitle: null });
+    }
+  };
+
   const [tenders, setTenders] = useState([]);
   const [companyVault, setCompanyVault] = useState(DEFAULT_COMPANY_VAULT);
   const [ledgerHistory, setLedgerHistory] = useState([
@@ -152,7 +205,7 @@ export function BidKaroStoreProvider({ children }) {
                 contractPeriodYears: bt.contract_period_months ? Number((bt.contract_period_months / 12).toFixed(1)) : 1.0,
                 closingDate: bt.closing_at ? new Date(bt.closing_at).toLocaleDateString('en-IN') : 'N/A',
                 daysLeft: bt.closing_at ? Math.max(0, Math.ceil((new Date(bt.closing_at) - new Date()) / (1000 * 60 * 60 * 24))) : 0,
-                pipelineStage: isInvalid ? 0 : bt.status === 'analysed' ? 2 : bt.status === 'indexed' ? 1 : 0,
+                pipelineStage: isInvalid ? 0 : bt.status === 'analysed' || (bt.readiness_score && bt.readiness_score > 70) ? 2 : 1,
                 readinessScore: isInvalid ? 0 : (bt.readiness_score || 0),
                 verdict: isInvalid ? 'Non-Tender Document' : bt.readiness_score ? (bt.readiness_score >= 80 ? 'Qualified' : 'Conditional') : 'In Review',
                 isInvalidDoc: isInvalid,
@@ -318,6 +371,21 @@ export function BidKaroStoreProvider({ children }) {
       corrigenda: [],
     };
     setTenders((prev) => [newTender, ...prev]);
+
+    // If Daily Free Screening Pass is available and document is a valid tender, consume pass
+    if (dailyFreeAvailable && !isClientInvalid) {
+      consumeDailyFreePass(cleanName);
+      setLedgerHistory((prev) => [
+        {
+          id: `tx-${Date.now()}`,
+          date: 'Just now',
+          desc: `Daily Free Screening Pass applied for "${cleanName.slice(0, 28)}..."`,
+          delta: '0 Cr (Free Pass)',
+          balance: credits,
+        },
+        ...prev,
+      ]);
+    }
 
     // Dispatch real upload to backend if file is an actual File/Blob
     if (file && (file instanceof File || file instanceof Blob)) {
@@ -603,6 +671,9 @@ export function BidKaroStoreProvider({ children }) {
         setPlanTier,
         deductCredits,
         dailyFreeAvailable,
+        dailyFreePass,
+        consumeDailyFreePass,
+        setDailyFreeAvailable,
         tenders,
         companyVault,
         setCompanyVault,

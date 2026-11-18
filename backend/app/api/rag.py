@@ -5,6 +5,7 @@ POST /api/rag/{tender_id}/stream  — SSE streaming answer
 """
 from __future__ import annotations
 
+import re
 import uuid
 
 import structlog
@@ -88,25 +89,54 @@ async def rag_query(
     await db.commit()
     await db.refresh(tenant)
 
+    def format_chunk_citation(c):
+        content = c.content or ""
+        clean_content = re.sub(r"\s+", " ", content).strip()
+        clause_ref = c.clause_ref
+        clause_number = None
+        if not clause_ref or clause_ref.strip() in ("Cited Clause", "Clause", "None"):
+            m = re.search(r'(?:Clause|Cl\.?|Section|Sec\.?)\s*(\d+(?:\.\d+)*)', clean_content[:180], re.IGNORECASE)
+            if m:
+                clause_number = m.group(1)
+                clause_ref = f"Clause {clause_number}"
+            else:
+                m2 = re.search(r'^(\d+\.\d+(?:\.\d+)*)\b', clean_content[:60])
+                if m2:
+                    clause_number = m2.group(1)
+                    clause_ref = f"Clause {clause_number}"
+                else:
+                    clause_ref = f"Clause (Page {c.page_number or 1})"
+        else:
+            num_m = re.search(r'(\d+(?:\.\d+)*)', clause_ref)
+            if num_m:
+                clause_number = num_m.group(1)
+
+        title = c.section_path or (f"{clause_ref}" if clause_ref else f"Official Specification (Page {c.page_number or 1})")
+        exact_snippet = clean_content[:260] + ("..." if len(clean_content) > 260 else "")
+        bbox = c.bbox if (c.bbox and len(c.bbox) == 4) else [0.08, 0.20, 0.92, 0.45]
+
+        return {
+            "id": c.id,
+            "page_number": c.page_number or 1,
+            "clause_ref": clause_ref,
+            "clause_number": clause_number,
+            "section_path": c.section_path,
+            "doc_id": c.doc_id,
+            "rrf_score": round(c.rrf_score, 4),
+            "relevance_score": round(c.cross_encoder_score, 4) if c.cross_encoder_score is not None else round(c.rrf_score, 4),
+            "title": title,
+            "exact_snippet": exact_snippet,
+            "snippet": exact_snippet,
+            "content_preview": clean_content[:300],
+            "content": content,
+            "bbox": bbox,
+            "cross_refs": c.cross_refs,
+        }
+
     return {
         "answer": result.answer,
         "confidence": result.confidence,
-        "citations": [
-            {
-                "id": c.id,
-                "page_number": c.page_number or 1,
-                "clause_ref": c.clause_ref or "Cited Clause",
-                "section_path": c.section_path,
-                "doc_id": c.doc_id,
-                "rrf_score": round(c.rrf_score, 4),
-                "relevance_score": round(c.cross_encoder_score, 4) if c.cross_encoder_score is not None else round(c.rrf_score, 4),
-                "content_preview": c.content[:300],
-                "content": c.content,
-                "bbox": c.bbox or [0.08, 0.22, 0.92, 0.38],
-                "cross_refs": c.cross_refs,
-            }
-            for c in result.chunks
-        ],
+        "citations": [format_chunk_citation(c) for c in result.chunks],
         "structured_citations": [
             {
                 "source_index": cit.source_index,

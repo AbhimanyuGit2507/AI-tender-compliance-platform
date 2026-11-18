@@ -32,6 +32,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   Wrench,
+  Paperclip,
 } from 'lucide-react';
 import api from '../services/api';
 import { useBidKaroStore } from '../context/BidKaroStoreContext';
@@ -54,6 +55,7 @@ export function Workspace() {
   const { tenderId } = useParams();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const chatAttachInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
   const isNearBottomRef = useRef(true);
@@ -64,6 +66,8 @@ export function Workspace() {
     setCredits,
     deductCredits,
     dailyFreeAvailable,
+    dailyFreePass,
+    consumeDailyFreePass,
     getStageDeltaCost,
     runTenderStage,
     resolveTenderBlocker,
@@ -319,24 +323,47 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
     if (!files || files.length === 0) return;
     const file = files[0];
     const tenderTitle = customTitle || file.name.replace(/\.[^/.]+$/, '');
+
+    // Check if modular single-task scope was chosen
+    const isModular = ['boq_only', 'corrigendum_only', 'forms_only', 'emd_audit_only'].includes(selectedStage);
     const targetStageNum = selectedStage === 'stage3' ? 3 : selectedStage === 'stage2' ? 2 : 1;
 
     setIsUploading(true);
     setUploadPercent(15);
-    setUploadStep(`Connecting to pipeline for Stage ${targetStageNum} (${selectedStage === 'stage3' ? 'Full Bid Package' : selectedStage === 'stage2' ? 'Detailed Audit' : 'Screening'})...`);
+    const stepLabel = isModular
+      ? `Processing document for ${selectedStage.replace('_', ' ').toUpperCase()}...`
+      : `Connecting to pipeline for Stage ${targetStageNum} (${selectedStage === 'stage3' ? 'Full Bid Package' : selectedStage === 'stage2' ? 'Detailed Audit' : 'Screening'})...`;
+    setUploadStep(stepLabel);
 
     try {
       if (api.isAuthenticated()) {
         const uploadRes = await api.uploadTender(files, tenderTitle);
         const tenderId = uploadRes.tender_id;
 
-        // If user selected Stage 2 or 3 upfront, record credit deduction
-        if (targetStageNum === 2) {
+        // Apply credit deduction according to selected operation
+        if (selectedStage === 'boq_only') {
+          deductCredits(10, `BOQ Rate Analysis & Item Extraction: ${tenderTitle}`);
+        } else if (selectedStage === 'corrigendum_only') {
+          deductCredits(5, `Corrigendum Impact & Clause Diff: ${tenderTitle}`);
+        } else if (selectedStage === 'forms_only') {
+          deductCredits(15, `CPWD Forms A-G Undertakings Generation: ${tenderTitle}`);
+        } else if (selectedStage === 'emd_audit_only') {
+          deductCredits(5, `EMD & MSME Exemption Check: ${tenderTitle}`);
+        } else if (targetStageNum === 2) {
           const delta = dailyFreeAvailable ? 25 : 40;
+          if (dailyFreeAvailable) consumeDailyFreePass(tenderTitle);
           deductCredits(delta, `Stage 2 Deep Qualification Intake: ${tenderTitle}`);
         } else if (targetStageNum === 3) {
           const delta = dailyFreeAvailable ? 85 : 100;
+          if (dailyFreeAvailable) consumeDailyFreePass(tenderTitle);
           deductCredits(delta, `Stage 3 Complete Bid Package Intake: ${tenderTitle}`);
+        } else {
+          // Stage 1
+          if (dailyFreeAvailable) {
+            consumeDailyFreePass(tenderTitle);
+          } else {
+            deductCredits(15, `Stage 1 NIT Screening: ${tenderTitle}`);
+          }
         }
 
         // Subscribe to real SSE stream
@@ -385,14 +412,25 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
                 updateTender(mapped.id, mapped);
               }
             } catch (_) {}
+
             navigate(`/workspace/${tenderId}`);
+            if (selectedStage === 'boq_only') setCanvasTab('boq');
+            if (selectedStage === 'forms_only') setCanvasTab('compiler');
+            if (selectedStage === 'corrigendum_only') setCorrigendumDiffOpen(true);
+            if (selectedStage === 'emd_audit_only') setCanvasTab('telemetry');
           },
           (err) => {
             console.warn('SSE upload stream ended, fallback local:', err);
             setIsUploading(false);
             const fallbackTender = createUploadedTender(file);
             fallbackTender.pipelineStage = targetStageNum;
+            if (dailyFreeAvailable && (selectedStage === 'stage1' || targetStageNum >= 1)) {
+              consumeDailyFreePass(tenderTitle);
+            }
             navigate(`/workspace/${fallbackTender.id}`);
+            if (selectedStage === 'boq_only') setCanvasTab('boq');
+            if (selectedStage === 'forms_only') setCanvasTab('compiler');
+            if (selectedStage === 'corrigendum_only') setCorrigendumDiffOpen(true);
           }
         );
         return;
@@ -411,8 +449,14 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
       setUploadPercent(100);
       const newTender = createUploadedTender(file);
       newTender.pipelineStage = targetStageNum;
+      if (dailyFreeAvailable && (selectedStage === 'stage1' || targetStageNum >= 1)) {
+        consumeDailyFreePass(tenderTitle);
+      }
       setIsUploading(false);
       navigate(`/workspace/${newTender.id}`);
+      if (selectedStage === 'boq_only') setCanvasTab('boq');
+      if (selectedStage === 'forms_only') setCanvasTab('compiler');
+      if (selectedStage === 'corrigendum_only') setCorrigendumDiffOpen(true);
     }, 900);
   };
 
@@ -1036,42 +1080,43 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
               {/* Current Stage Badge */}
               <span
                 className="badge-status pass"
-                style={{ fontSize: 11.5, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}
+                style={{ fontSize: 11, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}
               >
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981' }} />
                 Stage {(currentTender.pipelineStage || 1)}: {currentTender.pipelineStage >= 3 ? 'Full Package' : currentTender.pipelineStage === 2 ? 'Audit' : 'Screened'}
               </span>
 
               {/* Primary Action Next-Stage Button */}
-              {(currentTender.pipelineStage || 0) < 3 ? (
+              {(currentTender.pipelineStage || 1) < 3 ? (
                 <button
                   className="btn-agent btn-agent-primary"
                   style={{
-                    fontSize: 12.5,
-                    padding: '6px 14px',
+                    fontSize: 12,
+                    padding: '5px 11px',
                     background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
                     borderColor: '#f97316',
                     color: '#FFFFFF',
                     fontWeight: 700,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 6,
+                    gap: 5,
                     boxShadow: '0 2px 10px rgba(249, 115, 22, 0.35)',
+                    whiteSpace: 'nowrap',
                   }}
-                  onClick={() => handleAdvanceStage((currentTender.pipelineStage || 0) === 1 ? 2 : 3)}
-                  title={(currentTender.pipelineStage || 0) === 1 ? `Advance to Detailed Audit (+${deltaCostToStage2} Cr)` : `Generate Complete .DOCX Bid Package (+${deltaCostToStage3} Cr)`}
+                  onClick={() => handleAdvanceStage((currentTender.pipelineStage || 1) === 1 ? 2 : 3)}
+                  title={(currentTender.pipelineStage || 1) === 1 ? `Advance to Stage 2: Detailed Qualification Audit (+${deltaCostToStage2} Cr)` : `Generate Complete .DOCX Bid Package (+${deltaCostToStage3} Cr)`}
                 >
                   <Zap size={13} />
                   <span>
-                    {(currentTender.pipelineStage || 0) === 1
-                      ? `Advance to Stage 2 (+${deltaCostToStage2} Cr)`
-                      : `Generate Bid (+${deltaCostToStage3} Cr)`}
+                    {(currentTender.pipelineStage || 1) === 1
+                      ? `Stage 2 (+${deltaCostToStage2} Cr)`
+                      : `Stage 3: Bid (+${deltaCostToStage3} Cr)`}
                   </span>
                 </button>
               ) : (
                 <span
                   style={{
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: 700,
                     padding: '4px 10px',
                     borderRadius: 6,
@@ -1081,6 +1126,7 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
                     display: 'flex',
                     alignItems: 'center',
                     gap: 5,
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   <CheckCircle2 size={13} /> Bid Dossier Ready (.DOCX)
@@ -1828,6 +1874,34 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
             }}
             className="chat-input-capsule"
           >
+            <input
+              type="file"
+              ref={chatAttachInputRef}
+              onChange={(e) => handleFileUpload(e.target.files)}
+              style={{ display: 'none' }}
+              multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx"
+            />
+
+            <button
+              type="button"
+              onClick={() => chatAttachInputRef.current?.click()}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-tertiary)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '4px 6px',
+                borderRadius: 4,
+                transition: 'color 120ms ease',
+              }}
+              title="Attach new tender document, corrigendum, or BOQ to configure actions"
+            >
+              <Paperclip size={16} />
+            </button>
+
             <div style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center' }}>
               <Sparkles size={16} />
             </div>
@@ -1886,7 +1960,7 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
         <div
           style={{
             height: 52,
-            padding: '0 16px',
+            padding: '0 14px',
             borderBottom: '1px solid var(--border-subtle)',
             background: 'var(--bg-glass)',
             backdropFilter: 'blur(12px)',
@@ -1894,9 +1968,10 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
             alignItems: 'center',
             justifyContent: 'space-between',
             flexShrink: 0,
+            gap: 10,
           }}
         >
-          <div style={{ display: 'flex', gap: 4, background: 'var(--bg-surface)', padding: 3, borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
+          <div style={{ display: 'flex', gap: 4, background: 'var(--bg-surface)', padding: 3, borderRadius: 8, border: '1px solid var(--border-subtle)', minWidth: 0, overflowX: 'auto', scrollbarWidth: 'none' }}>
             {[
               {
                 id: 'telemetry',
@@ -1910,7 +1985,7 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
               },
               {
                 id: 'boq',
-                label: '📊 BOQ & Corrigenda',
+                label: '📊 BOQ & Diff',
                 badge: `${liveBOQ?.items?.length || currentTender.boqItems?.length || 5} Items`,
               },
               {
@@ -1923,27 +1998,29 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
                 key={tab.id}
                 onClick={() => setCanvasTab(tab.id)}
                 style={{
-                  padding: '7px 14px',
-                  borderRadius: 7,
+                  padding: '6px 10px',
+                  borderRadius: 6,
                   border: 'none',
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: canvasTab === tab.id ? 700 : 500,
                   cursor: 'pointer',
                   background: canvasTab === tab.id ? 'var(--accent-primary)' : 'transparent',
                   color: canvasTab === tab.id ? '#FFFFFF' : 'var(--text-secondary)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 7,
+                  gap: 5,
                   transition: 'all 120ms ease',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
                 }}
               >
                 <span>{tab.label}</span>
                 {tab.badge && (
                   <span
                     style={{
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: 700,
-                      padding: '2px 7px',
+                      padding: '1px 5px',
                       borderRadius: 4,
                       background: canvasTab === tab.id ? 'rgba(255,255,255,0.25)' : 'var(--bg-elevated)',
                       color: canvasTab === tab.id ? '#fff' : 'var(--text-secondary)',
@@ -1957,7 +2034,15 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
             ))}
           </div>
 
-          <span className={`badge-status ${currentTender.verdict === 'Qualified' ? 'pass' : 'warn'}`} style={{ fontSize: 12, padding: '4px 10px' }}>
+          <span
+            className={`badge-status ${currentTender.verdict === 'Qualified' ? 'pass' : 'warn'}`}
+            style={{
+              fontSize: 11.5,
+              padding: '4px 10px',
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+            }}
+          >
             {currentTender.verdict || 'In Review'}
           </span>
         </div>
@@ -1965,28 +2050,41 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
         {/* Contextual Executive Subtitle Bar */}
         <div
           style={{
-            padding: '9px 18px',
+            padding: '8px 16px',
             background: 'var(--bg-elevated)',
             borderBottom: '1px solid var(--border-subtle)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            fontSize: 12.5,
+            fontSize: 12,
             color: 'var(--text-secondary)',
             flexShrink: 0,
+            gap: 12,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <Info size={13} color="var(--accent-primary)" />
-            <span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, overflow: 'hidden' }}>
+            <Info size={13} color="var(--accent-primary)" style={{ flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {canvasTab === 'telemetry' && 'Contractor Eligibility Audit · CPWD Formula (2AN - B), Turnover Thresholds & Past Experience.'}
               {canvasTab === 'pdf' && 'Tender Proof & Clause Scrutiny · Official Scanned Pages with Verified Clause Citations.'}
               {canvasTab === 'boq' && 'BOQ Schedule & Corrigenda · Itemized Rates, Quantities & Official Amendments.'}
               {canvasTab === 'compiler' && 'Submission Package Compiler · Automated CPWD Forms A–G & Editable Word (.docx) Bids.'}
             </span>
           </div>
-          <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-            {canvasTab === 'telemetry' && 'CPWD Cl. 4.2 / GFR 170'}
+          <span
+            style={{
+              fontSize: 10.5,
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--text-tertiary)',
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+              padding: '2px 8px',
+              borderRadius: 4,
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
+            }}
+          >
+            {canvasTab === 'telemetry' && 'CPWD Cl. 4.2 · GFR 170'}
             {canvasTab === 'pdf' && 'Two-Cover Verification'}
             {canvasTab === 'boq' && 'CPWD Schedule B'}
             {canvasTab === 'compiler' && 'Forms A–G Proformas'}

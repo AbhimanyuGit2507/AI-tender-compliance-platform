@@ -673,10 +673,7 @@ class LLMRouter:
         # Guard Groq free on-demand tier OTPM limits
         effective_max_tokens = max_tokens
         if "groq" in provider_name.lower():
-            if "gpt-oss" in model.lower():
-                effective_max_tokens = min(max_tokens, 2048)
-            elif effective_max_tokens > 900:
-                effective_max_tokens = 900
+            effective_max_tokens = min(max_tokens, 2048)
 
         payload: dict[str, Any] = {
             "model": model,
@@ -697,8 +694,8 @@ class LLMRouter:
                     retry_header = resp.headers.get("retry-after")
                     wait_sec = float(retry_header) if retry_header else (3.0 * (attempt + 1))
                     wait_sec = min(max(wait_sec, 6.0), 20.0)
-                    if "groq" in provider_name.lower() and payload.get("max_tokens", 0) > 300:
-                        payload["max_tokens"] = max(300, int(payload["max_tokens"] * 0.7))
+                    if "groq" in provider_name.lower() and payload.get("max_tokens", 0) > 1200:
+                        payload["max_tokens"] = max(1200, int(payload["max_tokens"] * 0.8))
                     logger.warning("llm_call_rate_limited_retrying", provider=provider_name, model=model, wait_sec=wait_sec, attempt=attempt + 1, adjusted_max_tokens=payload.get("max_tokens"))
                     await asyncio.sleep(wait_sec)
                     continue
@@ -708,8 +705,8 @@ class LLMRouter:
                 if e.response.status_code == 429 and attempt < max_attempts - 1:
                     wait_sec = float(e.response.headers.get("retry-after", 6.0))
                     wait_sec = min(max(wait_sec, 6.0), 20.0)
-                    if "groq" in provider_name.lower() and payload.get("max_tokens", 0) > 300:
-                        payload["max_tokens"] = max(300, int(payload["max_tokens"] * 0.7))
+                    if "groq" in provider_name.lower() and payload.get("max_tokens", 0) > 1200:
+                        payload["max_tokens"] = max(1200, int(payload["max_tokens"] * 0.8))
                     logger.warning("llm_call_rate_limited_retrying", provider=provider_name, model=model, wait_sec=wait_sec, attempt=attempt + 1, adjusted_max_tokens=payload.get("max_tokens"))
                     await asyncio.sleep(wait_sec)
                     continue

@@ -29,7 +29,7 @@ export function AppShell({ children }) {
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [vaultModalOpen, setVaultModalOpen] = useState(false);
   const { user, logout, showOnboarding, markOnboardingComplete } = useAuth();
-  const { credits, planTier, dailyFreeAvailable, companyVault, tenders } = useBidKaroStore();
+  const { credits, planTier, dailyFreeAvailable, dailyFreePass, companyVault, tenders } = useBidKaroStore();
   const { theme, resolvedTheme, setTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -536,23 +536,46 @@ export function AppShell({ children }) {
 
           {/* Right: Daily Pass + Credit Pill + Vault Health */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-            {dailyFreeAvailable && (
+            {dailyFreeAvailable ? (
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
                   fontSize: 12,
+                  fontWeight: 700,
+                  padding: '5px 12px',
+                  borderRadius: 999,
+                  background: 'rgba(16, 185, 129, 0.12)',
+                  color: '#10B981',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  boxShadow: '0 0 12px rgba(16, 185, 129, 0.15)',
+                  whiteSpace: 'nowrap',
+                }}
+                title="Daily Free Screening is active: First NIT screening today costs 0 Credits"
+              >
+                <Zap size={13} fill="#10B981" />
+                <span>Daily Free Screening: Ready</span>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 11.5,
                   fontWeight: 600,
                   padding: '5px 12px',
                   borderRadius: 999,
-                  background: 'var(--accent-subtle)',
-                  color: 'var(--accent-primary)',
-                  border: '1px solid var(--accent-border)',
+                  background: 'var(--bg-elevated)',
+                  color: 'var(--text-secondary)',
+                  border: '1px solid var(--border-subtle)',
+                  whiteSpace: 'nowrap',
                 }}
+                title={`Daily Free Pass claimed today for "${dailyFreePass?.tenderTitle || 'Notice Inviting Tender'}". Resets at midnight IST.`}
               >
-                <Zap size={13} />
-                <span>Daily Free Screening: Ready</span>
+                <CheckCircle2 size={13} color="#10B981" />
+                <span>Daily Pass: Claimed Today</span>
               </div>
             )}
 

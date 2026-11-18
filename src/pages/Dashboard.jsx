@@ -230,7 +230,7 @@ export function Dashboard() {
             </div>
           </div>
           <div style={{ fontSize: 12, color: dailyFreeAvailable ? 'var(--status-pass-text)' : 'var(--text-secondary)', marginTop: 6 }}>
-            {dailyFreeAvailable ? '✓ Daily Free Screening Ready' : 'Cumulative Credit Spend'}
+            {dailyFreeAvailable ? '✓ Daily Free Screening Ready' : '✓ Daily Free Screening Claimed Today'}
           </div>
         </div>
       </div>
