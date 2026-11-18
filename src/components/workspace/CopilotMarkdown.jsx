@@ -360,3 +360,4 @@ export function CopilotMarkdown({ content, onCitationClick }) {
 }
 
 export default CopilotMarkdown;
+
