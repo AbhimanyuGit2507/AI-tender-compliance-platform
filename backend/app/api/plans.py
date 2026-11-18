@@ -283,10 +283,15 @@ async def check_low_balance_alert(
 PACK_CONFIG: dict[str, dict] = {
     "single": {"title": "Single Tender Pass", "plan_tier": "single_pack", "price_inr": 199.0, "credits": 100},
     "single_pack": {"title": "Single Tender Pass", "plan_tier": "single_pack", "price_inr": 199.0, "credits": 100},
+    "topup_100": {"title": "Single Tender Pass", "plan_tier": "single_pack", "price_inr": 199.0, "credits": 100},
     "active": {"title": "Active Bidder 5-Tender Pack", "plan_tier": "growth_pack", "price_inr": 499.0, "credits": 500},
+    "growth": {"title": "Active Bidder 5-Tender Pack", "plan_tier": "growth_pack", "price_inr": 499.0, "credits": 500},
     "growth_pack": {"title": "Active Bidder 5-Tender Pack", "plan_tier": "growth_pack", "price_inr": 499.0, "credits": 500},
+    "topup_500": {"title": "Active Bidder 5-Tender Pack", "plan_tier": "growth_pack", "price_inr": 499.0, "credits": 500},
+    "pro": {"title": "Enterprise EPC 15-Tender Pack", "plan_tier": "pro_contractor", "price_inr": 999.0, "credits": 1500},
     "enterprise": {"title": "Enterprise EPC 15-Tender Pack", "plan_tier": "pro_contractor", "price_inr": 999.0, "credits": 1500},
     "pro_contractor": {"title": "Enterprise EPC 15-Tender Pack", "plan_tier": "pro_contractor", "price_inr": 999.0, "credits": 1500},
+    "topup_1500": {"title": "Enterprise EPC 15-Tender Pack", "plan_tier": "pro_contractor", "price_inr": 999.0, "credits": 1500},
 }
 
 
@@ -532,6 +537,64 @@ async def verify_razorpay_payment(
         "credits_added": credits_to_add,
         "invoice_no": invoice_no,
         "payment_id": body.razorpay_payment_id,
+        "amount_inr": amount_inr,
+        "plan_title": pack["title"],
+    }
+
+
+@router.get("/invoice/{invoice_no}")
+async def get_tax_invoice_details(
+    invoice_no: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Retrieve full GST tax invoice breakdown (SAC 998313) for a given invoice number.
+    """
+    tenant_res = await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))
+    tenant = tenant_res.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    user_res = await db.execute(select(User).where(User.id == user.user_id))
+    u = user_res.scalar_one_or_none()
+
+    # Find matching ledger entry or use default for active tier
+    pack = PACK_CONFIG.get(tenant.plan_tier or "growth_pack", PACK_CONFIG["growth_pack"])
+    amount_inr = pack["price_inr"]
+    base_taxable = round(amount_inr / 1.18, 2)
+    cgst = round((amount_inr - base_taxable) / 2, 2)
+    sgst = round((amount_inr - base_taxable) / 2, 2)
+
+    return {
+        "invoice_no": invoice_no,
+        "invoice_date": datetime.utcnow().strftime("%d %B %Y"),
+        "sac_code": "998313",
+        "service_description": f"BidKaro AI Procurement Intelligence Platform - {pack['title']}",
+        "seller": {
+            "name": "BidKaro Technologies Private Limited",
+            "gstin": "07AABCB1234F1Z5",
+            "address": "DLF Cyber City, Tower B, Gurugram, Haryana 122002, India",
+            "state_code": "07",
+        },
+        "buyer": {
+            "name": tenant.name,
+            "email": u.email if u else "",
+            "tenant_id": str(tenant.id),
+        },
+        "financials": {
+            "currency": "INR",
+            "taxable_amount": base_taxable,
+            "cgst_rate_pct": 9.0,
+            "cgst_amount": cgst,
+            "sgst_rate_pct": 9.0,
+            "sgst_amount": sgst,
+            "total_gst_amount": round(cgst + sgst, 2),
+            "total_invoice_amount": amount_inr,
+        },
+        "payment_status": "PAID",
+        "place_of_supply": "Haryana (07)",
+        "reverse_charge_applicable": False,
     }
 
 

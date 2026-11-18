@@ -636,6 +636,10 @@ class ApiService {
     });
   }
 
+  async getTaxInvoiceDetails(invoiceNo) {
+    return await this.request(`/api/plans/invoice/${encodeURIComponent(invoiceNo)}`);
+  }
+
   // ── Live Tender Discovery & Instant Import ────────────────────────
   async getDiscoveryFeed({ q = '', portal = '', category = '', qualifiedOnly = false, minValue = null, maxValue = null } = {}) {
     const params = new URLSearchParams();

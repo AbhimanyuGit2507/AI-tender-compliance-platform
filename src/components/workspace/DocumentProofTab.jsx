@@ -343,7 +343,7 @@ export function DocumentProofTab({
               className="citation-pill"
               style={{ fontSize: 11, background: 'rgba(249, 115, 22, 0.12)', color: 'var(--accent-primary)', borderColor: 'rgba(249, 115, 22, 0.3)' }}
             >
-              📄 {focusedClause.clause_ref || `Clause ${focusedClause.clause_number}`} · Page {focusedClause.page_number || currentPage}
+              📄 {focusedClause.clause_ref || (focusedClause.clause_number ? `Clause ${focusedClause.clause_number}` : 'Official Evidence')} · Page {focusedClause.page_number || currentPage}
             </span>
           )}
           <span className="badge-status pass" style={{ fontSize: 10.5 }}>
@@ -447,16 +447,49 @@ export function DocumentProofTab({
             </div>
           </div>
 
-          {/* Active Clause Citation Banner if on this page */}
+          {/* Active Clause Citation Banner */}
           {(() => {
             if (!focusedClause) return null;
-            const isCurrentPage = !focusedClause.page_number || Number(focusedClause.page_number) === Number(currentPage);
-            if (!isCurrentPage) return null;
+            const targetPageNum = Number(focusedClause.page_number || 1);
+            const isCurrentPage = targetPageNum === Number(currentPage);
 
             const clauseTitle = focusedClause.clause_ref || (focusedClause.clause_number ? `Clause ${focusedClause.clause_number}` : 'Cited Evidence Clause');
-            const rawSnippet = focusedClause.title || focusedClause.exact_snippet || focusedClause.content_preview || focusedClause.content || focusedClause.snippet || 'Referenced clause text in official scan';
+            const rawSnippet = focusedClause.exact_snippet || focusedClause.title || focusedClause.content_preview || focusedClause.content || focusedClause.snippet || 'Referenced statutory condition in official tender package';
             const cleanSnippet = String(rawSnippet).replace(/^text:\s*/i, '').trim();
             const displaySnippet = cleanSnippet.length > 95 ? `${cleanSnippet.slice(0, 95)}...` : cleanSnippet;
+
+            if (!isCurrentPage) {
+              return (
+                <div
+                  style={{
+                    padding: '8px 14px',
+                    background: 'rgba(2, 132, 199, 0.1)',
+                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: 12,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: '#38BDF8', fontWeight: 700 }}>
+                      📍 {clauseTitle}
+                    </span>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      This cited clause is located on <strong>Page {targetPageNum}</strong>.
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handlePageChange(targetPageNum)}
+                    className="btn-agent btn-agent-primary"
+                    style={{ fontSize: 11, padding: '3px 10px', background: '#0284C7', borderColor: '#0284C7', color: '#fff' }}
+                  >
+                    Jump to Page {targetPageNum} →
+                  </button>
+                </div>
+              );
+            }
 
             return (
               <div
@@ -594,7 +627,7 @@ export function DocumentProofTab({
                           gap: 4,
                         }}
                       >
-                        <span>📍 {focusedClause.clause_ref || `Clause ${focusedClause.clause_number || ''}`}</span>
+                        <span>📍 {focusedClause.clause_ref || (focusedClause.clause_number ? `Clause ${focusedClause.clause_number}` : 'Official Evidence')}</span>
                         <span style={{ opacity: 0.9, fontWeight: 500 }}>Target Evidence</span>
                       </div>
                     </div>

@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Check, X, FileText, Shield, TrendingUp, Zap, Bot, Activity, Award, Sparkles, CreditCard } from 'lucide-react';
 import api from '../services/api';
+import { useBidKaroStore } from '../context/BidKaroStoreContext';
+import { useAuth } from '../context/AuthContext';
+import { startRazorpayCheckout } from '../services/razorpay';
+import { PaymentSuccessModal } from '../components/modals/PaymentSuccessModal';
 
 const DEFAULT_PLANS = [
   {
@@ -66,9 +70,14 @@ const FAQ = [
 ];
 
 export function Planners({ showToast }) {
+  const { purchaseCreditPack, companyVault } = useBidKaroStore();
+  const { user } = useAuth();
   const [plans, setPlans] = useState(DEFAULT_PLANS);
   const [creditBalance, setCreditBalance] = useState({ available_credits: 1, plan_tier: 'trial', total_ai_spend_inr: 0.0 });
   const [openFaq, setOpenFaq] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentResult, setPaymentResult] = useState(null);
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
 
   useEffect(() => {
     async function fetchPlansAndCredits() {
@@ -91,10 +100,45 @@ export function Planners({ showToast }) {
     fetchPlansAndCredits();
   }, []);
 
-  function handleSelectPlan(plan) {
-    if (showToast) {
-      showToast(`Redirecting to secure Razorpay checkout for ${plan.name} (₹${plan.price_inr})...`, 'info');
-    }
+  async function handleSelectPlan(plan) {
+    const creditsToGrant = plan.tier_id === 'pro_contractor' ? 1500 : plan.tier_id === 'growth_pack' ? 500 : 100;
+    setIsProcessing(true);
+    await startRazorpayCheckout({
+      planId: plan.tier_id,
+      planTitle: plan.name,
+      priceInr: plan.price_inr,
+      credits: creditsToGrant,
+      user: user || {},
+      companyVault: companyVault || {},
+      onStart: () => setIsProcessing(true),
+      onSuccess: (res) => {
+        setIsProcessing(false);
+        purchaseCreditPack(plan.name, res.creditsAdded || creditsToGrant, res.amountInr || plan.price_inr);
+        setPaymentResult({
+          ...res,
+          planTitle: plan.name,
+          amountInr: plan.price_inr,
+          creditsAdded: res.creditsAdded || creditsToGrant,
+        });
+        setSuccessModalOpen(true);
+        setCreditBalance((prev) => ({
+          ...prev,
+          available_credits: res.newBalance || (prev.available_credits + creditsToGrant),
+        }));
+        if (showToast) {
+          showToast(`Successfully credited ${creditsToGrant} credits!`, 'success');
+        }
+      },
+      onError: (err) => {
+        setIsProcessing(false);
+        if (showToast) {
+          showToast(`Payment error: ${err}`, 'error');
+        }
+      },
+      onDismiss: () => {
+        setIsProcessing(false);
+      },
+    });
   }
 
   return (
@@ -242,6 +286,13 @@ export function Planners({ showToast }) {
           ))}
         </div>
       </div>
+
+      {/* Verified Razorpay Payment Success & GST Invoice Modal */}
+      <PaymentSuccessModal
+        isOpen={successModalOpen}
+        onClose={() => setSuccessModalOpen(false)}
+        paymentResult={paymentResult}
+      />
     </div>
   );
 }

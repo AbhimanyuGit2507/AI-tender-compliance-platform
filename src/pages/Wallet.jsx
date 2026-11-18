@@ -3,6 +3,9 @@ import { motion } from 'framer-motion';
 import { Zap, Plus, CheckCircle2, ArrowRight, ShieldCheck, Sparkles, Clock, History, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useBidKaroStore } from '../context/BidKaroStoreContext';
+import { useAuth } from '../context/AuthContext';
+import { startRazorpayCheckout } from '../services/razorpay';
+import { PaymentSuccessModal } from '../components/modals/PaymentSuccessModal';
 
 const USAGE_HISTORY = [
   { action: 'NIT Package Audit (400 Pages)', cost: 15, date: 'Today, 03:14 PM', tender: 'NHAI 4-Lane Greenfield Highway EPC', status: 'Completed' },
@@ -15,58 +18,99 @@ const USAGE_HISTORY = [
 
 const PLANS = [
   {
-    id: 'pack_single',
-    name: 'Single NIT Audit',
-    credits: 60,
-    price: '₹1,999',
-    unitPrice: '₹33/credit',
+    id: 'single_pack',
+    name: 'Single Tender Pass',
+    credits: 100,
+    priceInr: 199,
+    price: '₹199',
+    unitPrice: '₹1.99/credit',
     desc: 'Complete clause audit, eligibility matrix & bid package compiler for 1 tender NIT.',
     features: [
-      'Full 500-Page NIT Document Scan',
-      'Clause-Level Disqualification Audits',
-      'EMD Waiver & MSME Eligibility Check',
-      'Turnkey Bid Package Compiler (DOCX/PDF)',
+      'Stage 1: Complete NIT & Risk Screening',
+      'Stage 2: Detailed Eligibility & Risk Audit',
+      'Stage 3: Submission-Ready Bid Package (.DOCX)',
+      '1 Corrigendum Impact Sync included',
     ],
   },
   {
-    id: 'pack_growth',
-    name: 'Growth Contractor',
-    credits: 350,
-    price: '₹7,499',
-    unitPrice: '₹21/credit',
+    id: 'growth_pack',
+    name: 'Active Bidder 5-Tender Pack',
+    credits: 500,
+    priceInr: 499,
+    price: '₹499',
+    unitPrice: '₹0.99/credit',
     desc: 'Best for active EPC and civil contractors bidding 5–8 government tenders per month.',
     popular: true,
     features: [
-      '350 High-Speed Inference Credits',
-      'Sub-Clause 150 DPI Page Proof Citations',
-      'BOQ Schedule C & Corrigenda Diff Engine',
-      'Multi-User Team Review & Export',
-      'Statutory 7% CPWD Escalation Engine',
+      '5 Complete Tender Lifecycles',
+      'Unlimited Corrigendum Clause Diffs',
+      'Priority OCR & Annexure Extraction',
+      'Pre-Bid Relaxation Letter Generator',
+      'Direct .DOCX & .XLSX Export Bundles',
     ],
   },
   {
-    id: 'pack_enterprise',
-    name: 'Enterprise Syndicate',
-    credits: 1200,
-    price: '₹18,999',
-    unitPrice: '₹15/credit',
+    id: 'pro_contractor',
+    name: 'Enterprise EPC 15-Tender Pack',
+    credits: 1500,
+    priceInr: 999,
+    price: '₹999',
+    unitPrice: '₹0.66/credit',
     desc: 'Dedicated enterprise capacity for infrastructure conglomerates and tender consulting firms.',
     features: [
-      '1,200 High-Capacity Compute Credits',
-      'Priority Fast-Track Queue (<30s NIT audits)',
-      'Unlimited Company Vault Credential Storage',
-      'Dedicated Solution Architect & Custom Query Prompts',
-      'Official REST API Access for Enterprise ERPs',
+      '15 Complete Tender Lifecycles',
+      'Multi-User Shared Company Vault',
+      'Custom JV Partner Split Solver',
+      'Dedicated EPC Compliance Support',
+      'Two-Layer Final Bid Red-Flag Audit',
     ],
   },
 ];
 
 export function Wallet({ showToast }) {
   const navigate = useNavigate();
-  const { credits, planTier } = useBidKaroStore();
+  const { credits, planTier, purchaseCreditPack, companyVault } = useBidKaroStore();
+  const { user } = useAuth();
   const [selectedPlanIndex, setSelectedPlanIndex] = useState(1);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentResult, setPaymentResult] = useState(null);
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
 
-  const totalSpent = USAGE_HISTORY.reduce((sum, h) => sum + h.cost, 0);
+  const handlePurchasePlan = async (plan) => {
+    setIsProcessing(true);
+    await startRazorpayCheckout({
+      planId: plan.id,
+      planTitle: plan.name,
+      priceInr: plan.priceInr,
+      credits: plan.credits,
+      user: user || {},
+      companyVault: companyVault || {},
+      onStart: () => setIsProcessing(true),
+      onSuccess: (res) => {
+        setIsProcessing(false);
+        purchaseCreditPack(plan.name, res.creditsAdded || plan.credits, res.amountInr || plan.priceInr);
+        setPaymentResult({
+          ...res,
+          planTitle: plan.name,
+          amountInr: plan.priceInr,
+          creditsAdded: res.creditsAdded || plan.credits,
+        });
+        setSuccessModalOpen(true);
+        if (showToast) {
+          showToast(`Successfully credited ${plan.credits} credits to wallet!`, 'success');
+        }
+      },
+      onError: (err) => {
+        setIsProcessing(false);
+        if (showToast) {
+          showToast(`Payment error: ${err}`, 'error');
+        }
+      },
+      onDismiss: () => {
+        setIsProcessing(false);
+      },
+    });
+  };
 
   return (
     <div style={{ maxWidth: 1140, margin: '0 auto', padding: '32px 24px 64px' }}>
@@ -437,6 +481,7 @@ export function Wallet({ showToast }) {
 
           <button
             className="btn btn-primary"
+            disabled={isProcessing}
             style={{
               width: '100%',
               marginTop: 18,
@@ -451,16 +496,10 @@ export function Wallet({ showToast }) {
               justifyContent: 'center',
               gap: 8,
             }}
-            onClick={() => {
-              if (showToast) {
-                showToast(`Initiating checkout for ${PLANS[selectedPlanIndex].name}...`, 'info');
-              } else {
-                alert(`Proceeding to checkout for ${PLANS[selectedPlanIndex].name}`);
-              }
-            }}
+            onClick={() => handlePurchasePlan(PLANS[selectedPlanIndex])}
           >
             <Zap size={15} />
-            <span>Purchase {PLANS[selectedPlanIndex].name} ({PLANS[selectedPlanIndex].price})</span>
+            <span>{isProcessing ? 'Processing Secure Payment...' : `Purchase ${PLANS[selectedPlanIndex].name} (${PLANS[selectedPlanIndex].price})`}</span>
             <ArrowRight size={15} />
           </button>
         </div>
@@ -580,6 +619,13 @@ export function Wallet({ showToast }) {
           </div>
         </div>
       </div>
+
+      {/* Verified Razorpay Payment Success & GST Invoice Modal */}
+      <PaymentSuccessModal
+        isOpen={successModalOpen}
+        onClose={() => setSuccessModalOpen(false)}
+        paymentResult={paymentResult}
+      />
     </div>
   );
 }

@@ -22,23 +22,12 @@ import {
   Bell,
 } from 'lucide-react';
 import { useBidKaroStore } from '../context/BidKaroStoreContext';
+import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { PageHeader } from '../components/common/PageHeader';
+import { startRazorpayCheckout } from '../services/razorpay';
+import { PaymentSuccessModal } from '../components/modals/PaymentSuccessModal';
 import api from '../services/api';
-
-function loadRazorpayScript() {
-  return new Promise((resolve) => {
-    if (window.Razorpay) {
-      resolve(true);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-}
 
 const PACKS = [
   {
@@ -93,11 +82,14 @@ const PACKS = [
 
 export function Settings() {
   const { credits, planTier, dailyFreeAvailable, purchaseCreditPack, ledgerHistory, companyVault } = useBidKaroStore();
+  const { user } = useAuth();
   const themeContext = useTheme();
   const theme = themeContext?.theme || 'dark';
   const setTheme = themeContext?.setTheme || (() => {});
   const [purchaseNotice, setPurchaseNotice] = useState(null);
   const [activeTab, setActiveTab] = useState('billing'); // 'billing' | 'settings' | 'ledger'
+  const [successPaymentResult, setSuccessPaymentResult] = useState(null);
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
 
   // Brevo Email Notification Preferences
   const [emailPrefs, setEmailPrefs] = useState({
@@ -169,73 +161,34 @@ export function Settings() {
 
   const handleBuy = async (pack) => {
     setIsProcessingPayment(true);
-    const planId = pack.id === 'growth' ? 'growth_pack' : pack.id === 'enterprise' ? 'pro_contractor' : 'single_pack';
-
-    try {
-      // 1. Create order on backend
-      const order = await api.createRazorpayOrder(planId);
-
-      // 2. Load official Razorpay Checkout SDK
-      const scriptLoaded = await loadRazorpayScript();
-
-      if (!scriptLoaded || !window.Razorpay || order.is_test_mode) {
-        // Dev/Test mode fallback: verify payment reference directly with backend
-        await api.verifyRazorpayPayment({
-          razorpay_order_id: order.order_id,
-          razorpay_payment_id: `pay_dev_${Date.now()}`,
-          razorpay_signature: 'test_signature',
-          plan_id: planId,
+    await startRazorpayCheckout({
+      planId: pack.id,
+      planTitle: pack.title,
+      priceInr: pack.priceInr,
+      credits: pack.credits,
+      user: user || {},
+      companyVault: companyVault || {},
+      onStart: () => setIsProcessingPayment(true),
+      onSuccess: (res) => {
+        setIsProcessingPayment(false);
+        purchaseCreditPack(pack.title, res.creditsAdded || pack.credits, res.amountInr || pack.priceInr);
+        setSuccessPaymentResult({
+          ...res,
+          planTitle: pack.title,
+          amountInr: pack.priceInr,
+          creditsAdded: res.creditsAdded || pack.credits,
         });
-        purchaseCreditPack(pack.title, pack.credits, pack.priceInr);
-        setPurchaseNotice(`Order Verified! Credited ${pack.credits} Tender Credits to your workspace wallet.`);
+        setSuccessModalOpen(true);
+      },
+      onError: (err) => {
+        setIsProcessingPayment(false);
+        setPurchaseNotice(`Notice: ${err}`);
         setTimeout(() => setPurchaseNotice(null), 4000);
-        return;
-      }
-
-      // 3. Open authentic Razorpay Checkout modal
-      const options = {
-        key: order.key_id,
-        amount: order.amount,
-        currency: order.currency || 'INR',
-        name: 'BidKaro Tender Intelligence',
-        description: `${order.plan_title} (${order.credits} Credits)`,
-        order_id: order.order_id,
-        theme: {
-          color: '#3B82F6',
-        },
-        handler: async (response) => {
-          try {
-            await api.verifyRazorpayPayment({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              plan_id: planId,
-            });
-            purchaseCreditPack(pack.title, pack.credits, pack.priceInr);
-            setPurchaseNotice(`Payment Successful! Credited ${pack.credits} Tender Credits. Tax invoice emailed.`);
-            setTimeout(() => setPurchaseNotice(null), 4500);
-          } catch (err) {
-            setPurchaseNotice(`Payment processed. Notice: ${err.message}`);
-          }
-        },
-        modal: {
-          ondismiss: () => {
-            setIsProcessingPayment(false);
-          },
-        },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } catch (err) {
-      console.warn('Razorpay checkout note:', err);
-      // Fallback
-      purchaseCreditPack(pack.title, pack.credits, pack.priceInr);
-      setPurchaseNotice(`Credited ${pack.credits} Tender Credits to workspace wallet.`);
-      setTimeout(() => setPurchaseNotice(null), 3500);
-    } finally {
-      setIsProcessingPayment(false);
-    }
+      },
+      onDismiss: () => {
+        setIsProcessingPayment(false);
+      },
+    });
   };
 
   const TABS = [
@@ -950,6 +903,13 @@ export function Settings() {
           </div>
         </div>
       )}
+
+      {/* Verified Razorpay Payment Success & GST Invoice Modal */}
+      <PaymentSuccessModal
+        isOpen={successModalOpen}
+        onClose={() => setSuccessModalOpen(false)}
+        paymentResult={successPaymentResult}
+      />
     </div>
   );
 }

@@ -12,7 +12,7 @@ export function renderInlineMarkdown(text, onCitationClick) {
   // 1. [Source 1, Page 40, Clause 22.9] or [Page 40, Clause 22.9] or [Clause 22.9] or [Source 2, Page 18]
   // 2. **bold**
   // 3. `code`
-  const tokenRegex = /(\[(?:Source\s*\d+,?\s*)?(?:Page\s*\d+[^\]]*|Clause\s*[^\]]+)\]|\*\*[^*]+\*\*|`[^`]+`)/gi;
+  const tokenRegex = /(\[(?:Source\s*\d+,?\s*)?(?:Page\s*\d+[^\]]*|Clause\s*[^\]]*)\]|\*\*[^*]+\*\*|`[^`]+`)/gi;
 
   const parts = [];
   let lastIndex = 0;
@@ -36,6 +36,8 @@ export function renderInlineMarkdown(text, onCitationClick) {
       // Extract clause ref if present
       const clauseMatch = inner.match(/Clause\s*([^,\]]+)/i);
       const clauseRef = clauseMatch ? `Clause ${clauseMatch[1].trim()}` : null;
+      const clauseNumber = clauseMatch ? clauseMatch[1].trim() : (clauseRef ? clauseRef.replace(/[^0-9.]/g, '') : null);
+      const label = clauseRef || (clauseNumber ? `Clause ${clauseNumber}` : 'Official Evidence');
 
       parts.push(
         <button
@@ -45,8 +47,11 @@ export function renderInlineMarkdown(text, onCitationClick) {
             e.stopPropagation();
             if (onCitationClick) {
               onCitationClick({
-                page_number: pageNum,
-                clause_ref: clauseRef,
+                page_number: pageNum || 1,
+                clause_ref: label,
+                clause_number: clauseNumber,
+                title: `${label} (Page ${pageNum || 1})`,
+                exact_snippet: inner,
                 raw_citation: inner,
               });
             }
