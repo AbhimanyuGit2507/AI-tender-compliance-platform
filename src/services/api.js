@@ -104,7 +104,34 @@ class ApiService {
     }
   }
 
-  // ── Authentication ────────────────────────────────────────────────
+  // ── Authentication & Diagnostic Error Parsing ─────────────────────
+  _parseAuthError(res, errJson, defaultMsg) {
+    let msg = defaultMsg;
+    let code = null;
+    let suggestedMethod = null;
+    let email = null;
+    let meta = {};
+
+    const detail = errJson?.detail;
+    if (typeof detail === 'string') {
+      msg = detail;
+    } else if (typeof detail === 'object' && detail !== null) {
+      msg = detail.message || detail.error || defaultMsg;
+      code = detail.code || null;
+      suggestedMethod = detail.suggested_method || null;
+      email = detail.email || null;
+      meta = detail;
+    }
+
+    const err = new Error(msg);
+    err.code = code;
+    err.suggestedMethod = suggestedMethod;
+    err.email = email;
+    err.status = res.status;
+    err.meta = meta;
+    return err;
+  }
+
   async login(email, password) {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
@@ -112,12 +139,9 @@ class ApiService {
       body: JSON.stringify({ email, password }),
     });
     if (!res.ok) {
-      let msg = 'Login failed';
-      try {
-        const err = await res.json();
-        msg = err.detail || msg;
-      } catch (_) {}
-      throw new Error(msg);
+      let errJson = null;
+      try { errJson = await res.json(); } catch (_) {}
+      throw this._parseAuthError(res, errJson, 'Login failed');
     }
     const data = await res.json();
     this.setAuth(data.access_token, data.tenant_id);
@@ -138,12 +162,9 @@ class ApiService {
       }),
     });
     if (!res.ok) {
-      let msg = 'Registration failed';
-      try {
-        const err = await res.json();
-        msg = err.detail || msg;
-      } catch (_) {}
-      throw new Error(msg);
+      let errJson = null;
+      try { errJson = await res.json(); } catch (_) {}
+      throw this._parseAuthError(res, errJson, 'Registration failed');
     }
     const data = await res.json();
     this.setAuth(data.access_token, data.tenant_id);
@@ -157,12 +178,9 @@ class ApiService {
       body: JSON.stringify({ email }),
     });
     if (!res.ok) {
-      let msg = 'Failed to dispatch verification code';
-      try {
-        const err = await res.json();
-        msg = err.detail || msg;
-      } catch (_) {}
-      throw new Error(msg);
+      let errJson = null;
+      try { errJson = await res.json(); } catch (_) {}
+      throw this._parseAuthError(res, errJson, 'Failed to dispatch verification code');
     }
     return await res.json();
   }
@@ -179,12 +197,9 @@ class ApiService {
       }),
     });
     if (!res.ok) {
-      let msg = 'Invalid or expired verification code';
-      try {
-        const err = await res.json();
-        msg = err.detail || msg;
-      } catch (_) {}
-      throw new Error(msg);
+      let errJson = null;
+      try { errJson = await res.json(); } catch (_) {}
+      throw this._parseAuthError(res, errJson, 'Invalid or expired verification code');
     }
     const data = await res.json();
     this.setAuth(data.access_token, data.tenant_id);
@@ -202,16 +217,51 @@ class ApiService {
       }),
     });
     if (!res.ok) {
-      let msg = 'Google authentication failed';
-      try {
-        const err = await res.json();
-        msg = err.detail || msg;
-      } catch (_) {}
-      throw new Error(msg);
+      let errJson = null;
+      try { errJson = await res.json(); } catch (_) {}
+      throw this._parseAuthError(res, errJson, 'Google authentication failed');
     }
     const data = await res.json();
     this.setAuth(data.access_token, data.tenant_id);
     return data;
+  }
+
+  async forgotPassword(email) {
+    const res = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      let errJson = null;
+      try { errJson = await res.json(); } catch (_) {}
+      throw this._parseAuthError(res, errJson, 'Failed to send password reset code');
+    }
+    return await res.json();
+  }
+
+  async resetPassword(email, otp, newPassword) {
+    const res = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp, new_password: newPassword }),
+    });
+    if (!res.ok) {
+      let errJson = null;
+      try { errJson = await res.json(); } catch (_) {}
+      throw this._parseAuthError(res, errJson, 'Failed to reset password');
+    }
+    return await res.json();
+  }
+
+  async migrateGuestSession(guestTenderId = null, anonSessionId = null) {
+    return await this.request('/api/auth/migrate', {
+      method: 'POST',
+      body: JSON.stringify({
+        guest_tender_id: guestTenderId,
+        anon_session_id: anonSessionId,
+      }),
+    });
   }
 
   async subscribeNewsletter(email, name = null, company = null, source = 'landing_page') {

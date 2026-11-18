@@ -135,3 +135,4 @@ echo -e " 2. Add https://${PUBLIC_IP} to Authorized JavaScript Origins in Google
 echo -e " 3. Run ${BOLD}./scripts/setup-ssl.sh yourdomain.com${NC} to enable free Let's Encrypt HTTPS"
 echo -e " 4. View live logs: ${BOLD}docker compose -f docker-compose.prod.yml logs -f${NC}"
 echo -e "${GREEN}${BOLD}══════════════════════════════════════════════════════════════════════${NC}\n"
+

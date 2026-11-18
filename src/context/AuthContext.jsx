@@ -82,6 +82,18 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const forgotPassword = async (email) => {
+    return await api.forgotPassword(email);
+  };
+
+  const resetPassword = async (email, otp, newPassword) => {
+    return await api.resetPassword(email, otp, newPassword);
+  };
+
+  const migrateGuestSession = async (guestTenderId = null, anonSessionId = null) => {
+    return await api.migrateGuestSession(guestTenderId, anonSessionId);
+  };
+
   // Called by OnboardingWizard after completion
   const markOnboardingComplete = async () => {
     try {
@@ -108,6 +120,9 @@ export function AuthProvider({ children }) {
     sendOtp,
     verifyOtp,
     loginWithGoogle,
+    forgotPassword,
+    resetPassword,
+    migrateGuestSession,
     logout,
     refreshUser: fetchCurrentUser,
     markOnboardingComplete,

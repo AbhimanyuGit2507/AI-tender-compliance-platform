@@ -117,6 +117,15 @@ export function GuestTrial() {
       clearInterval(progressInterval);
       setStage('done');
       setResult(data);
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('bidkaro_guest_tender', JSON.stringify({
+            id: data.tender_id || data.id,
+            title: data.tender_title || data.filename || file?.name || 'Guest Trial NIT',
+            score: data.compliance_score,
+          }));
+        } catch (_) {}
+      }
     } catch (err) {
       clearInterval(progressInterval);
       if (err.isTrialExhausted) {
@@ -135,6 +144,11 @@ export function GuestTrial() {
     setResult(null);
     setErrorMsg('');
     setAnimatedScore(0);
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem('bidkaro_guest_tender');
+      } catch (_) {}
+    }
   };
 
   const isLoading = ['uploading', 'extracting', 'analyzing', 'scoring'].includes(stage);

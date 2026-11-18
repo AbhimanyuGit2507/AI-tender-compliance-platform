@@ -136,3 +136,4 @@ docker compose -f docker-compose.prod.yml restart frontend
 echo -e "${GREEN}${BOLD}══════════════════════════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}${BOLD} ✓ SSL Configured! Access your platform at: https://${DOMAIN}${NC}"
 echo -e "${GREEN}${BOLD}══════════════════════════════════════════════════════════════════════${NC}"
+

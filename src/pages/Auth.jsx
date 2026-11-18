@@ -47,7 +47,25 @@ export function Auth({ defaultMode = 'login' }) {
   const [googleAuthLoading, setGoogleAuthLoading] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(true);
 
-  const { login, register, sendOtp, verifyOtp, loginWithGoogle, isAuthenticated } = useAuth();
+  // Diagnostic error & recovery states
+  const [errorCode, setErrorCode] = useState(null);
+  const [suggestedMethod, setSuggestedMethod] = useState(null);
+  const [forgotStep, setForgotStep] = useState('email'); // 'email' | 'verify'
+  const [resetOtp, setResetOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [hasGuestTrial, setHasGuestTrial] = useState(false);
+
+  const {
+    login,
+    register,
+    sendOtp,
+    verifyOtp,
+    loginWithGoogle,
+    forgotPassword,
+    resetPassword,
+    migrateGuestSession,
+    isAuthenticated,
+  } = useAuth();
   const themeContext = useTheme();
   const resolvedTheme = themeContext?.resolvedTheme || 'dark';
   const setTheme = themeContext?.setTheme || (() => {});
@@ -57,6 +75,38 @@ export function Auth({ defaultMode = 'login' }) {
   const location = useLocation();
 
   const redirectPath = location.state?.from?.pathname || '/workspace';
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const trial = sessionStorage.getItem('bidkaro_guest_tender');
+      const params = new URLSearchParams(location.search);
+      if (trial || params.get('from') === 'trial') {
+        setHasGuestTrial(true);
+      }
+    }
+  }, [location.search]);
+
+  const handlePostAuthSuccess = async () => {
+    let target = redirectPath;
+    if (typeof window !== 'undefined') {
+      try {
+        const savedTrial = sessionStorage.getItem('bidkaro_guest_tender');
+        if (savedTrial) {
+          const parsed = JSON.parse(savedTrial);
+          if (parsed?.id) {
+            const mig = await migrateGuestSession(parsed.id);
+            if (mig?.primary_tender_id) {
+              target = `/workspace/${mig.primary_tender_id}`;
+            }
+          }
+          sessionStorage.removeItem('bidkaro_guest_tender');
+        }
+      } catch (err) {
+        console.warn('Guest tender migration note:', err);
+      }
+    }
+    navigate(target, { replace: true });
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -92,11 +142,15 @@ export function Auth({ defaultMode = 'login' }) {
               if (response?.credential) {
                 setGoogleAuthLoading(true);
                 setError('');
+                setErrorCode(null);
+                setSuggestedMethod(null);
                 try {
                   await loginWithGoogle(response.credential, companyName.trim() || undefined, marketingOptIn);
-                  navigate(redirectPath, { replace: true });
+                  await handlePostAuthSuccess();
                 } catch (err) {
                   setError(err.message || 'Google Single Sign-On failed. Please try again.');
+                  setErrorCode(err.code || null);
+                  setSuggestedMethod(err.suggestedMethod || null);
                 } finally {
                   setGoogleAuthLoading(false);
                 }
@@ -126,6 +180,8 @@ export function Auth({ defaultMode = 'login' }) {
   async function handleSendOtp(e) {
     if (e) e.preventDefault();
     setError('');
+    setErrorCode(null);
+    setSuggestedMethod(null);
     setInfoMessage('');
 
     if (!email.trim()) {
@@ -141,6 +197,8 @@ export function Auth({ defaultMode = 'login' }) {
       setInfoMessage(res.message || `A 6-digit code has been dispatched to ${email.trim()}`);
     } catch (err) {
       setError(err.message || 'Failed to dispatch verification code via email. Please check your address.');
+      setErrorCode(err.code || null);
+      setSuggestedMethod(err.suggestedMethod || null);
     } finally {
       setLoading(false);
     }
@@ -149,6 +207,8 @@ export function Auth({ defaultMode = 'login' }) {
   async function handleVerifyOtp(e) {
     e.preventDefault();
     setError('');
+    setErrorCode(null);
+    setSuggestedMethod(null);
 
     if (!otpCode.trim() || otpCode.trim().length < 4) {
       setError('Please enter the verification code sent to your email.');
@@ -158,9 +218,11 @@ export function Auth({ defaultMode = 'login' }) {
     setLoading(true);
     try {
       await verifyOtp(email.trim(), otpCode.trim(), companyName.trim() || undefined, marketingOptIn);
-      navigate(redirectPath, { replace: true });
+      await handlePostAuthSuccess();
     } catch (err) {
       setError(err.message || 'Verification failed. Please check the passcode and try again.');
+      setErrorCode(err.code || null);
+      setSuggestedMethod(err.suggestedMethod || null);
     } finally {
       setLoading(false);
     }
@@ -168,6 +230,8 @@ export function Auth({ defaultMode = 'login' }) {
 
   async function handleGoogleLogin() {
     setError('');
+    setErrorCode(null);
+    setSuggestedMethod(null);
     setInfoMessage('');
 
     const googleClientId =
@@ -192,9 +256,11 @@ export function Auth({ defaultMode = 'login' }) {
             if (tokenResponse.access_token) {
               try {
                 await loginWithGoogle(tokenResponse.access_token, companyName.trim() || undefined, marketingOptIn);
-                navigate(redirectPath, { replace: true });
+                await handlePostAuthSuccess();
               } catch (err) {
                 setError(err.message || 'Google Single Sign-On failed. Please try again.');
+                setErrorCode(err.code || null);
+                setSuggestedMethod(err.suggestedMethod || null);
               } finally {
                 setGoogleAuthLoading(false);
               }
@@ -240,6 +306,8 @@ export function Auth({ defaultMode = 'login' }) {
   async function handlePasswordSubmit(e) {
     e.preventDefault();
     setError('');
+    setErrorCode(null);
+    setSuggestedMethod(null);
 
     if (!email || !password) {
       setError('Please provide both email and password.');
@@ -272,9 +340,67 @@ export function Auth({ defaultMode = 'login' }) {
           marketingOptIn,
         });
       }
-      navigate(redirectPath, { replace: true });
+      await handlePostAuthSuccess();
     } catch (err) {
       setError(err.message || (isLogin ? 'Sign-in failed. Please check credentials.' : 'Registration failed.'));
+      setErrorCode(err.code || null);
+      setSuggestedMethod(err.suggestedMethod || null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSendResetCode(e) {
+    if (e) e.preventDefault();
+    setError('');
+    setErrorCode(null);
+    setSuggestedMethod(null);
+    setInfoMessage('');
+
+    if (!email.trim()) {
+      setError('Please provide your work email address to receive reset instructions.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await forgotPassword(email.trim());
+      setForgotStep('verify');
+      setInfoMessage(res.message || `A 6-digit password reset code has been sent to ${email.trim()}`);
+    } catch (err) {
+      setError(err.message || 'Failed to dispatch password reset code.');
+      setErrorCode(err.code || null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCompleteResetPassword(e) {
+    e.preventDefault();
+    setError('');
+    setErrorCode(null);
+    setSuggestedMethod(null);
+    setInfoMessage('');
+
+    if (!resetOtp.trim() || resetOtp.trim().length < 4) {
+      setError('Please enter the 6-digit reset code sent to your email.');
+      return;
+    }
+    if (!newPassword || newPassword.length < 8) {
+      setError('New password must be at least 8 characters in length.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await resetPassword(email.trim(), resetOtp.trim(), newPassword);
+      setInfoMessage(res.message || 'Password successfully updated! Please sign in with your new password.');
+      setAuthMethod('password');
+      setIsLogin(true);
+      setPassword(newPassword);
+    } catch (err) {
+      setError(err.message || 'Password reset failed. Please check the code and try again.');
+      setErrorCode(err.code || null);
     } finally {
       setLoading(false);
     }
@@ -476,8 +602,196 @@ export function Auth({ defaultMode = 'login' }) {
             </p>
           </div>
 
-          {/* Error & Info Alerts */}
-          {error && (
+          {/* Guest Trial Retention Banner */}
+          {hasGuestTrial && (
+            <div
+              style={{
+                background: 'rgba(249, 115, 22, 0.10)',
+                border: '1px solid rgba(249, 115, 22, 0.28)',
+                borderRadius: 8,
+                padding: '11px 14px',
+                marginBottom: 20,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
+              <Sparkles size={16} color="var(--accent-cta)" style={{ flexShrink: 0 }} />
+              <div style={{ fontSize: 12.5, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                <strong>Trial NIT Saved:</strong> Sign in or register to unlock your complete compliance audit report & pre-bid queries.
+              </div>
+            </div>
+          )}
+
+          {/* Smart Resolution Error Cards */}
+          {error && errorCode === 'ACCOUNT_EXISTS' && (
+            <div
+              style={{
+                padding: '14px',
+                background: isLight ? 'rgba(59, 130, 246, 0.08)' : 'rgba(30, 58, 138, 0.25)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                borderRadius: 8,
+                marginBottom: 18,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <AlertCircle size={18} color="#3b82f6" style={{ marginTop: 2, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', marginBottom: 4 }}>
+                    Account Already Exists
+                  </div>
+                  <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.4 }}>
+                    An account for <strong>{email}</strong> already exists. Please sign in below.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {suggestedMethod === 'google' ? (
+                      <button
+                        type="button"
+                        onClick={handleGoogleLogin}
+                        className="btn btn-primary"
+                        style={{ fontSize: 12, padding: '6px 14px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      >
+                        <span>Continue with Google SSO →</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsLogin(true);
+                          setAuthMethod('password');
+                          setError('');
+                          setErrorCode(null);
+                        }}
+                        className="btn btn-primary"
+                        style={{ fontSize: 12, padding: '6px 14px', borderRadius: 6 }}
+                      >
+                        Sign In with Password →
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsLogin(true);
+                        setAuthMethod('otp');
+                        setError('');
+                        setErrorCode(null);
+                      }}
+                      className="btn btn-secondary"
+                      style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6 }}
+                    >
+                      Use Email Passcode
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {error && errorCode === 'ACCOUNT_USES_GOOGLE' && (
+            <div
+              style={{
+                padding: '14px',
+                background: isLight ? 'rgba(66, 133, 244, 0.08)' : 'rgba(30, 64, 175, 0.25)',
+                border: '1px solid rgba(66, 133, 244, 0.35)',
+                borderRadius: 8,
+                marginBottom: 18,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <AlertCircle size={18} color="#4285F4" style={{ marginTop: 2, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', marginBottom: 4 }}>
+                    Google Single Sign-On Required
+                  </div>
+                  <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.4 }}>
+                    This account was registered using Google and does not have a separate password.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGoogleLogin}
+                    className="btn btn-primary"
+                    style={{ fontSize: 12, padding: '7px 16px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <span>Sign In with Google Now →</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {error && errorCode === 'ACCOUNT_USES_OTP' && (
+            <div
+              style={{
+                padding: '14px',
+                background: isLight ? 'rgba(249, 115, 22, 0.08)' : 'rgba(154, 52, 18, 0.25)',
+                border: '1px solid rgba(249, 115, 22, 0.35)',
+                borderRadius: 8,
+                marginBottom: 18,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <AlertCircle size={18} color="#f97316" style={{ marginTop: 2, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', marginBottom: 4 }}>
+                    Passwordless Account
+                  </div>
+                  <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.4 }}>
+                    This account uses passwordless one-time passcodes sent to your corporate email.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMethod('otp');
+                      setError('');
+                      setErrorCode(null);
+                    }}
+                    className="btn btn-primary"
+                    style={{ fontSize: 12, padding: '7px 16px', borderRadius: 6 }}
+                  >
+                    Switch to Email Passcode (OTP) →
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {error && errorCode === 'ERR_NO_ACCOUNT' && (
+            <div
+              style={{
+                padding: '14px',
+                background: isLight ? 'rgba(239, 68, 68, 0.08)' : 'rgba(153, 27, 27, 0.25)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 8,
+                marginBottom: 18,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <AlertCircle size={18} color="#ef4444" style={{ marginTop: 2, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)', marginBottom: 4 }}>
+                    No Account Found
+                  </div>
+                  <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.4 }}>
+                    We couldn't find an account for <strong>{email}</strong>. Would you like to create one with 15 free audit credits?
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLogin(false);
+                      setError('');
+                      setErrorCode(null);
+                    }}
+                    className="btn btn-primary"
+                    style={{ fontSize: 12, padding: '7px 16px', borderRadius: 6 }}
+                  >
+                    Create Free Contractor Account →
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {error && !['ACCOUNT_EXISTS', 'ACCOUNT_USES_GOOGLE', 'ACCOUNT_USES_OTP', 'ERR_NO_ACCOUNT'].includes(errorCode) && (
             <div
               style={{
                 padding: '10px 14px',
@@ -651,8 +965,135 @@ export function Auth({ defaultMode = 'login' }) {
             </button>
           </div>
 
-          {/* Form: OTP Method */}
-          {authMethod === 'otp' ? (
+          {/* Form: Forgot Password / Reset */}
+          {authMethod === 'forgot' ? (
+            forgotStep === 'email' ? (
+              <form onSubmit={handleSendResetCode} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  Enter your registered work email. We'll send you a 6-digit verification code to reset your password.
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 5 }}>
+                    Corporate Work Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="tender.manager@contractor.in"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      fontSize: 13,
+                      borderRadius: 6,
+                      border: '1px solid var(--border-subtle)',
+                      background: inputBg,
+                      color: 'var(--text-primary)',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn btn-primary"
+                  style={{ width: '100%', padding: '10px 16px', fontSize: 13.5, marginTop: 4 }}
+                >
+                  {loading ? 'Sending Code...' : 'Send Password Reset Code →'}
+                </button>
+                <div style={{ textAlign: 'center', marginTop: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMethod('password');
+                      setError('');
+                      setErrorCode(null);
+                    }}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 12, cursor: 'pointer' }}
+                  >
+                    ← Back to Sign In
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleCompleteResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 5 }}>
+                    Enter 6-Digit Reset Code sent to {email}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={8}
+                    autoFocus
+                    placeholder="123456"
+                    value={resetOtp}
+                    onChange={(e) => setResetOtp(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      fontSize: 18,
+                      fontWeight: 700,
+                      textAlign: 'center',
+                      letterSpacing: '0.2em',
+                      borderRadius: 6,
+                      border: '1px solid var(--border-strong)',
+                      background: inputBg,
+                      color: 'var(--text-primary)',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 5 }}>
+                    New Password (min 8 characters)
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      fontSize: 13,
+                      borderRadius: 6,
+                      border: '1px solid var(--border-subtle)',
+                      background: inputBg,
+                      color: 'var(--text-primary)',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn btn-primary"
+                  style={{ width: '100%', padding: '10px 16px', fontSize: 13.5, marginTop: 4 }}
+                >
+                  {loading ? 'Resetting Password...' : 'Save New Password & Sign In →'}
+                </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)' }}>
+                  <button
+                    type="button"
+                    onClick={() => setForgotStep('email')}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', padding: 0 }}
+                  >
+                    ← Change Email
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSendResetCode}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', padding: 0 }}
+                  >
+                    Resend Code
+                  </button>
+                </div>
+              </form>
+            )
+          ) : authMethod === 'otp' ? (
             otpStep === 'email' ? (
               <form onSubmit={handleSendOtp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {!isLogin && (
@@ -912,13 +1353,29 @@ export function Auth({ defaultMode = 'login' }) {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
                   <label style={{ fontSize: 12, fontWeight: 600 }}>Password</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, cursor: 'pointer' }}
-                  >
-                    {showPassword ? 'Hide' : 'Show'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    {isLogin && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMethod('forgot');
+                          setForgotStep('email');
+                          setError('');
+                          setErrorCode(null);
+                        }}
+                        style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: 11, cursor: 'pointer', padding: 0 }}
+                      >
+                        Forgot?
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 11, cursor: 'pointer' }}
+                    >
+                      {showPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}

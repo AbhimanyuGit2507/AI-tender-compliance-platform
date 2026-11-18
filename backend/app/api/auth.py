@@ -13,7 +13,7 @@ import uuid
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -26,7 +26,15 @@ from app.core.security import (
     verify_google_token,
     verify_password,
 )
-from app.models import CompanyFact, CreditLedgerEntry, Tenant, User
+from app.models import (
+    CompanyFact,
+    CreditLedgerEntry,
+    Tenant,
+    Tender,
+    TenderDocument,
+    TenderRequirement,
+    User,
+)
 from app.services.audit_service import get_tenant_audit_logs, log_audit_event
 from app.services.email_service import generate_otp_code, get_email_service
 from app.core.rate_limiter import get_client_ip, rate_limiter
@@ -82,6 +90,39 @@ class TokenResponse(BaseModel):
     is_new_user: bool = False
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    success: bool
+    message: str
+    dev_otp: str | None = None
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(..., min_length=4, max_length=8)
+    new_password: str = Field(..., min_length=8)
+
+
+class ResetPasswordResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class MigrateSessionRequest(BaseModel):
+    anon_session_id: str | None = None
+    guest_tender_id: str | None = None
+
+
+class MigrateSessionResponse(BaseModel):
+    success: bool
+    migrated_tenders_count: int
+    primary_tender_id: str | None = None
+    message: str
+
+
 
 @router.post(
     "/register",
@@ -92,16 +133,27 @@ class TokenResponse(BaseModel):
 async def register(body: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Create a new tenant + owner user. Awards free trial credits and dispatches welcome email."""
     settings = get_settings()
+    clean_email = body.email.strip().lower()
 
-    # Check duplicate email
-    existing = await db.execute(select(User).where(User.email == body.email))
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=409, detail="Email already registered")
+    # Check duplicate email (case-insensitive)
+    existing_res = await db.execute(select(User).where(func.lower(User.email) == clean_email))
+    existing = existing_res.scalar_one_or_none()
+    if existing:
+        suggested_method = "google" if existing.google_id else ("password" if existing.password_hash else "otp")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "An account with this email already exists.",
+                "code": "ACCOUNT_EXISTS",
+                "suggested_method": suggested_method,
+                "email": clean_email,
+            },
+        )
 
     # Create tenant
     tenant = Tenant(
         id=uuid.uuid4(),
-        name=body.company_name,
+        name=body.company_name.strip(),
         plan_tier="free",
         credit_balance=settings.free_trial_credits,
     )
@@ -112,9 +164,9 @@ async def register(body: RegisterRequest, request: Request, db: AsyncSession = D
     user = User(
         id=uuid.uuid4(),
         tenant_id=tenant.id,
-        email=body.email,
+        email=clean_email,
         password_hash=hash_password(body.password),
-        display_name=body.name,
+        display_name=body.name.strip() if body.name else None,
         role="owner",
         is_anonymous=False,
         marketing_opt_in=body.marketing_opt_in,
@@ -196,19 +248,60 @@ async def register(body: RegisterRequest, request: Request, db: AsyncSession = D
     dependencies=[Depends(rate_limiter(max_requests=25, window_seconds=60, key_prefix="auth_login"))],
 )
 async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == body.email))
+    clean_email = body.email.strip().lower()
+    result = await db.execute(select(User).where(func.lower(User.email) == clean_email))
     user = result.scalar_one_or_none()
 
-    if not user or not user.password_hash or not verify_password(body.password, user.password_hash):
+    if not user:
         await log_audit_event(
             action="auth.login_failed",
-            details={"email": body.email, "reason": "invalid_credentials"},
+            details={"email": clean_email, "reason": "user_not_found"},
             request=request,
             db=db,
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
+            detail={
+                "message": "No account found with this email. Please verify your email or create a free account.",
+                "code": "ERR_NO_ACCOUNT",
+                "email": clean_email,
+            },
+        )
+
+    if not user.password_hash:
+        if user.google_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "This account was created with Google Single Sign-On. Please sign in with Google or use Email Passcode.",
+                    "code": "ACCOUNT_USES_GOOGLE",
+                    "email": clean_email,
+                },
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "This account uses passwordless Email Passcodes. Please switch to the Email Passcode (OTP) tab.",
+                    "code": "ACCOUNT_USES_OTP",
+                    "email": clean_email,
+                },
+            )
+
+    if not verify_password(body.password, user.password_hash):
+        await log_audit_event(
+            action="auth.login_failed",
+            details={"email": clean_email, "reason": "invalid_password"},
+            request=request,
+            db=db,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "message": "Incorrect password. Please verify your password or use Email Passcode (OTP).",
+                "code": "INVALID_PASSWORD",
+                "email": clean_email,
+            },
         )
 
     token = create_access_token(user.id, user.tenant_id, user.role)
@@ -420,7 +513,7 @@ async def verify_otp(body: OtpVerifyRequest, request: Request, db: AsyncSession 
 
     # 2. Check if user exists
     clean_email = body.email.strip().lower()
-    result = await db.execute(select(User).where(User.email == clean_email))
+    result = await db.execute(select(User).where(func.lower(User.email) == clean_email))
     user = result.scalar_one_or_none()
 
     is_new = False
@@ -546,6 +639,187 @@ async def create_anonymous_session(db: AsyncSession = Depends(get_db)):
         user_id=str(user.id),
         tenant_id=str(tenant.id),
         is_anonymous=True,
+    )
+
+
+@router.post(
+    "/migrate",
+    response_model=MigrateSessionResponse,
+    dependencies=[Depends(rate_limiter(max_requests=10, window_seconds=60, key_prefix="auth_migrate"))],
+)
+async def migrate_anonymous_session(
+    body: MigrateSessionRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Migrate tenders, documents, and compliance records from an anonymous guest session
+    (or specific guest_tender_id) into the newly authenticated user's tenant.
+    """
+    if current_user.is_anonymous:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot migrate to an anonymous user session",
+        )
+
+    migrated_count = 0
+    primary_tender_id = None
+    source_tenant_ids = set()
+
+    if body.anon_session_id:
+        anon_users_res = await db.execute(
+            select(User).where(User.anon_session_id == body.anon_session_id, User.is_anonymous == True)
+        )
+        for u in anon_users_res.scalars().all():
+            source_tenant_ids.add(u.tenant_id)
+
+    if body.guest_tender_id:
+        try:
+            tid = uuid.UUID(body.guest_tender_id)
+            t_res = await db.execute(select(Tender).where(Tender.id == tid))
+            t = t_res.scalar_one_or_none()
+            if t:
+                # Security check: verify source tenant is indeed anonymous
+                src_tenant_res = await db.execute(select(Tenant).where(Tenant.id == t.tenant_id))
+                src_tenant = src_tenant_res.scalar_one_or_none()
+                if src_tenant and (src_tenant.name == "Anonymous" or src_tenant.plan_tier == "free"):
+                    source_tenant_ids.add(t.tenant_id)
+                    primary_tender_id = str(t.id)
+        except ValueError:
+            pass
+
+    if not source_tenant_ids:
+        return MigrateSessionResponse(
+            success=False,
+            migrated_tenders_count=0,
+            primary_tender_id=None,
+            message="No anonymous session or guest tender found to migrate.",
+        )
+
+    for src_id in source_tenant_ids:
+        if src_id == current_user.tenant_id:
+            continue
+        # Find all tenders belonging to source tenant
+        tenders_res = await db.execute(select(Tender).where(Tender.tenant_id == src_id))
+        tenders = tenders_res.scalars().all()
+        for t in tenders:
+            t.tenant_id = current_user.tenant_id
+            migrated_count += 1
+            if not primary_tender_id:
+                primary_tender_id = str(t.id)
+
+        # Update documents
+        await db.execute(
+            update(TenderDocument)
+            .where(TenderDocument.tenant_id == src_id)
+            .values(tenant_id=current_user.tenant_id)
+        )
+        # Update requirements
+        await db.execute(
+            update(TenderRequirement)
+            .where(TenderRequirement.tenant_id == src_id)
+            .values(tenant_id=current_user.tenant_id)
+        )
+        # Update company facts
+        await db.execute(
+            update(CompanyFact)
+            .where(CompanyFact.tenant_id == src_id)
+            .values(tenant_id=current_user.tenant_id)
+        )
+
+    await db.flush()
+
+    logger.info(
+        "guest_session_migrated",
+        migrated_count=migrated_count,
+        to_tenant=str(current_user.tenant_id),
+        user_id=str(current_user.user_id),
+    )
+
+    return MigrateSessionResponse(
+        success=True,
+        migrated_tenders_count=migrated_count,
+        primary_tender_id=primary_tender_id,
+        message=f"Successfully migrated {migrated_count} tender(s) to your account workspace.",
+    )
+
+
+@router.post(
+    "/forgot-password",
+    response_model=ForgotPasswordResponse,
+    dependencies=[Depends(rate_limiter(max_requests=5, window_seconds=60, key_prefix="auth_forgot"))],
+)
+async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Dispatch a 6-digit password reset OTP to user's email via Brevo transactional email.
+    """
+    clean_email = body.email.strip().lower()
+    res = await db.execute(select(User).where(func.lower(User.email) == clean_email))
+    user = res.scalar_one_or_none()
+
+    if not user:
+        # Avoid account enumeration
+        return ForgotPasswordResponse(
+            success=True,
+            message=f"If an account exists for {clean_email}, a 6-digit reset code has been sent.",
+        )
+
+    email_service = get_email_service()
+    otp_code = generate_otp_code(6)
+
+    result = await email_service.send_otp_email(to_email=clean_email, otp_code=otp_code)
+
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send reset code. Please try again later.",
+        )
+
+    return ForgotPasswordResponse(
+        success=True,
+        message=f"A 6-digit password reset code has been sent to {clean_email}.",
+        dev_otp=result.get("dev_otp"),
+    )
+
+
+@router.post(
+    "/reset-password",
+    response_model=ResetPasswordResponse,
+    dependencies=[Depends(rate_limiter(max_requests=10, window_seconds=60, key_prefix="auth_reset"))],
+)
+async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Verify reset OTP and set new password for the account.
+    """
+    clean_email = body.email.strip().lower()
+    email_service = get_email_service()
+
+    # 1. Verify OTP code
+    is_valid, msg = await email_service.verify_otp(email=clean_email, code=body.otp)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=msg,
+        )
+
+    # 2. Update password
+    res = await db.execute(select(User).where(func.lower(User.email) == clean_email))
+    user = res.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User account not found.",
+        )
+
+    user.password_hash = hash_password(body.new_password)
+    await db.flush()
+
+    logger.info("password_reset_successful", user_id=str(user.id), email=clean_email)
+
+    return ResetPasswordResponse(
+        success=True,
+        message="Your password has been successfully reset. You can now sign in.",
     )
 
 
