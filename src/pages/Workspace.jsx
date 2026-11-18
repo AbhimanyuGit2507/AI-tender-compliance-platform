@@ -952,12 +952,12 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
             </button>
 
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                 <span
                   title={currentTender.title}
                   style={{
-                    fontSize: 13,
-                    fontWeight: 800,
+                    fontSize: 15,
+                    fontWeight: 700,
                     color: 'var(--text-primary)',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
@@ -968,17 +968,18 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
                   {currentTender.title}
                 </span>
                 <span
-                  className="citation-pill"
                   style={{
-                    fontSize: 10,
-                    padding: '1px 6px',
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 6,
                     fontFamily: 'var(--font-mono)',
                     flexShrink: 0,
-                    background: 'rgba(2, 132, 199, 0.12)',
-                    color: '#38BDF8',
-                    borderColor: 'rgba(2, 132, 199, 0.3)',
+                    background: 'rgba(59, 130, 246, 0.18)',
+                    color: '#93c5fd',
+                    border: '1px solid rgba(96, 165, 250, 0.4)',
                   }}
-                  title={`Official Reference: ${currentTender.refNo}`}
+                  title={`Official Tender Reference: ${currentTender.refNo}`}
                 >
                   {currentTender.refNo}
                 </span>
@@ -986,12 +987,13 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
               {currentTender.authority && (
                 <span
                   style={{
-                    fontSize: 10.5,
-                    color: 'var(--text-tertiary)',
+                    fontSize: 12,
+                    color: 'var(--text-secondary)',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
-                    lineHeight: 1.2,
+                    lineHeight: 1.3,
+                    marginTop: 1,
                   }}
                   title={currentTender.authority}
                 >
@@ -1006,8 +1008,8 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               <span
                 style={{
-                  fontSize: 11,
-                  padding: '4px 10px',
+                  fontSize: 12,
+                  padding: '5px 12px',
                   borderRadius: 6,
                   background: 'rgba(239, 68, 68, 0.12)',
                   color: '#ef4444',
@@ -1019,24 +1021,24 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
               </span>
               <button
                 className="btn-agent btn-agent-primary"
-                style={{ fontSize: 11, padding: '4px 10px', background: 'var(--accent-cta)', borderColor: 'var(--accent-cta)', color: '#fff' }}
+                style={{ fontSize: 12, padding: '5px 12px', background: 'var(--accent-cta)', borderColor: 'var(--accent-cta)', color: '#fff' }}
                 onClick={async () => {
                   await transferTenderToVault(currentTender.id);
                   navigate('/vault');
                 }}
               >
-                <ShieldCheck size={12} /> Transfer to Vault
+                <ShieldCheck size={14} /> Transfer to Vault
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, position: 'relative' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, position: 'relative' }}>
               
               {/* Current Stage Badge */}
               <span
                 className="badge-status pass"
-                style={{ fontSize: 10.5, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 4 }}
+                style={{ fontSize: 11.5, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}
               >
-                <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#10B981' }} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981' }} />
                 Stage {(currentTender.pipelineStage || 1)}: {currentTender.pipelineStage >= 3 ? 'Full Package' : currentTender.pipelineStage === 2 ? 'Audit' : 'Screened'}
               </span>
 
@@ -1045,21 +1047,21 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
                 <button
                   className="btn-agent btn-agent-primary"
                   style={{
-                    fontSize: 11.5,
-                    padding: '4px 11px',
+                    fontSize: 12.5,
+                    padding: '6px 14px',
                     background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
                     borderColor: '#f97316',
                     color: '#FFFFFF',
                     fontWeight: 700,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 5,
-                    boxShadow: '0 2px 8px rgba(249, 115, 22, 0.3)',
+                    gap: 6,
+                    boxShadow: '0 2px 10px rgba(249, 115, 22, 0.35)',
                   }}
                   onClick={() => handleAdvanceStage((currentTender.pipelineStage || 0) === 1 ? 2 : 3)}
                   title={(currentTender.pipelineStage || 0) === 1 ? `Advance to Detailed Audit (+${deltaCostToStage2} Cr)` : `Generate Complete .DOCX Bid Package (+${deltaCostToStage3} Cr)`}
                 >
-                  <Zap size={12} />
+                  <Zap size={13} />
                   <span>
                     {(currentTender.pipelineStage || 0) === 1
                       ? `Advance to Stage 2 (+${deltaCostToStage2} Cr)`
@@ -1069,19 +1071,19 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
               ) : (
                 <span
                   style={{
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 700,
-                    padding: '3px 8px',
+                    padding: '4px 10px',
                     borderRadius: 6,
                     background: 'rgba(16, 185, 129, 0.15)',
                     color: '#10B981',
                     border: '1px solid rgba(16, 185, 129, 0.3)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 4,
+                    gap: 5,
                   }}
                 >
-                  <CheckCircle2 size={12} /> Bid Dossier Ready (.DOCX)
+                  <CheckCircle2 size={13} /> Bid Dossier Ready (.DOCX)
                 </span>
               )}
 
@@ -1090,19 +1092,19 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
                 <button
                   className="btn-agent btn-agent-secondary"
                   style={{
-                    fontSize: 11,
-                    padding: '4px 9px',
+                    fontSize: 12,
+                    padding: '6px 12px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 4,
+                    gap: 5,
                     background: toolsMenuOpen ? 'var(--bg-elevated)' : undefined,
                   }}
                   onClick={() => setToolsMenuOpen(!toolsMenuOpen)}
                   title="Procurement Utilities & Solvers"
                 >
-                  <Wrench size={12} />
+                  <Wrench size={13} />
                   <span>Tools</span>
-                  <ChevronDown size={11} style={{ opacity: 0.7 }} />
+                  <ChevronDown size={12} style={{ opacity: 0.8 }} />
                 </button>
 
                 {/* Tools Dropdown Menu */}
@@ -1446,7 +1448,7 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
               <div
                 className="glass-pod"
                 style={{
-                  padding: 14,
+                  padding: 16,
                   borderLeft: currentTender.summary?.redFlags?.length ? '3px solid var(--status-warn)' : '3px solid var(--status-pass)',
                 }}
               >
@@ -1455,17 +1457,17 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 6,
+                      gap: 7,
                       fontWeight: 700,
                       color: currentTender.summary?.redFlags?.length ? 'var(--status-warn-text)' : 'var(--status-pass-text)',
-                      fontSize: 12.5,
+                      fontSize: 13.5,
                     }}
                   >
-                    {currentTender.summary?.redFlags?.length ? <AlertTriangle size={14} /> : <CheckCircle2 size={14} />}
+                    {currentTender.summary?.redFlags?.length ? <AlertTriangle size={15} /> : <CheckCircle2 size={15} />}
                     <span>Commercial & Legal Risk Radar ({currentTender.summary?.redFlags?.length || 0})</span>
                   </div>
                   {currentTender.summary?.redFlags?.length > 0 && (
-                    <span className="citation-pill" onClick={() => setCanvasTab('pdf')}>
+                    <span className="citation-pill" style={{ fontSize: 11.5, cursor: 'pointer' }} onClick={() => setCanvasTab('pdf')}>
                       Inspect Clauses
                     </span>
                   )}
@@ -1477,22 +1479,22 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
                       <div
                         key={idx}
                         style={{
-                          padding: '8px 10px',
+                          padding: '10px 12px',
                           background: 'var(--bg-elevated)',
                           borderRadius: 8,
-                          fontSize: 12,
+                          fontSize: 12.5,
                         }}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
                           <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{flag.title}</span>
-                          <span style={{ fontSize: 10.5, color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)' }}>{flag.clause}</span>
+                          <span style={{ fontSize: 11.5, color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)' }}>{flag.clause}</span>
                         </div>
-                        <div style={{ color: 'var(--text-secondary)', lineHeight: 1.4 }}>{flag.detail}</div>
+                        <div style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>{flag.detail}</div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div style={{ color: 'var(--text-secondary)', fontSize: 11.5, lineHeight: 1.45 }}>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: 12.5, lineHeight: 1.55 }}>
                     Zero critical commercial risks detected. All parsed liquidated damages caps, defect liability periods, and EMD provisions are within standard procurement parameters.
                   </div>
                 )}
@@ -1613,14 +1615,14 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
                 {/* Message Body Capsule */}
                 <div
                   style={{
-                    padding: isAgent ? '14px 18px' : '10px 16px',
-                    borderRadius: isAgent ? '4px 14px 14px 14px' : '16px 16px 4px 16px',
+                    padding: isAgent ? '16px 20px' : '12px 18px',
+                    borderRadius: isAgent ? '6px 16px 16px 16px' : '16px 16px 6px 16px',
                     background: isAgent ? 'var(--bg-surface)' : 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
                     color: isAgent ? 'var(--text-primary)' : '#FFFFFF',
                     border: isAgent ? '1px solid var(--border-subtle)' : 'none',
                     boxShadow: isAgent ? 'var(--shadow-card)' : '0 4px 14px rgba(249, 115, 22, 0.25)',
-                    fontSize: 12.5,
-                    lineHeight: 1.6,
+                    fontSize: 14,
+                    lineHeight: 1.65,
                   }}
                 >
                   {isAgent ? (
@@ -1840,7 +1842,7 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
                 border: 'none',
                 background: 'transparent',
                 outline: 'none',
-                fontSize: 13,
+                fontSize: 14,
                 color: 'var(--text-primary)',
               }}
             />
@@ -1850,13 +1852,14 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
               disabled={!inputPrompt.trim() || isTyping}
               className={`btn-agent ${inputPrompt.trim() ? 'btn-agent-primary' : 'btn-agent-secondary'}`}
               style={{
-                padding: '6px 14px',
-                fontSize: 12,
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 600,
                 borderRadius: 10,
                 transition: 'all 150ms ease',
               }}
             >
-              <Send size={13} />
+              <Send size={14} />
               <span>Ask Copilot</span>
             </button>
           </form>
@@ -1920,17 +1923,17 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
                 key={tab.id}
                 onClick={() => setCanvasTab(tab.id)}
                 style={{
-                  padding: '5px 11px',
-                  borderRadius: 6,
+                  padding: '7px 14px',
+                  borderRadius: 7,
                   border: 'none',
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: canvasTab === tab.id ? 700 : 500,
                   cursor: 'pointer',
                   background: canvasTab === tab.id ? 'var(--accent-primary)' : 'transparent',
                   color: canvasTab === tab.id ? '#FFFFFF' : 'var(--text-secondary)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 6,
+                  gap: 7,
                   transition: 'all 120ms ease',
                 }}
               >
@@ -1938,11 +1941,12 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
                 {tab.badge && (
                   <span
                     style={{
-                      fontSize: 9.5,
-                      padding: '1px 5px',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: '2px 7px',
                       borderRadius: 4,
                       background: canvasTab === tab.id ? 'rgba(255,255,255,0.25)' : 'var(--bg-elevated)',
-                      color: canvasTab === tab.id ? '#fff' : 'var(--text-tertiary)',
+                      color: canvasTab === tab.id ? '#fff' : 'var(--text-secondary)',
                       fontFamily: 'var(--font-mono)',
                     }}
                   >
@@ -1953,7 +1957,7 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
             ))}
           </div>
 
-          <span className={`badge-status ${currentTender.verdict === 'Qualified' ? 'pass' : 'warn'}`} style={{ fontSize: 11 }}>
+          <span className={`badge-status ${currentTender.verdict === 'Qualified' ? 'pass' : 'warn'}`} style={{ fontSize: 12, padding: '4px 10px' }}>
             {currentTender.verdict || 'In Review'}
           </span>
         </div>
@@ -1961,29 +1965,29 @@ I have initialized **${stageTitle}** on **${currentTender.title}** (Ref: \`${cur
         {/* Contextual Executive Subtitle Bar */}
         <div
           style={{
-            padding: '7px 16px',
+            padding: '9px 18px',
             background: 'var(--bg-elevated)',
             borderBottom: '1px solid var(--border-subtle)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            fontSize: 11,
+            fontSize: 12.5,
             color: 'var(--text-secondary)',
             flexShrink: 0,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Info size={12} color="var(--accent-primary)" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <Info size={13} color="var(--accent-primary)" />
             <span>
-              {canvasTab === 'telemetry' && 'Executive Qualification Telemetry · CPWD Formula Math (2AN - B), Turnover, and Experience.'}
-              {canvasTab === 'pdf' && 'Tender Proof & Legal Scrutiny · Official 150 DPI Scanned Pages, OCR Clause Extraction, and Citations.'}
-              {canvasTab === 'boq' && 'BOQ Schedule & Corrigenda · Schedule of Quantities line-item rates, cost drivers, and tender diffs.'}
-              {canvasTab === 'compiler' && 'Statutory Bid Drafter · Automated Cover 1 Word (.docx) submittals with 0% commercial price leakage.'}
+              {canvasTab === 'telemetry' && 'Contractor Eligibility Audit · CPWD Formula (2AN - B), Turnover Thresholds & Past Experience.'}
+              {canvasTab === 'pdf' && 'Tender Proof & Clause Scrutiny · Official Scanned Pages with Verified Clause Citations.'}
+              {canvasTab === 'boq' && 'BOQ Schedule & Corrigenda · Itemized Rates, Quantities & Official Amendments.'}
+              {canvasTab === 'compiler' && 'Submission Package Compiler · Automated CPWD Forms A–G & Editable Word (.docx) Bids.'}
             </span>
           </div>
-          <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-tertiary)' }}>
+          <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
             {canvasTab === 'telemetry' && 'CPWD Cl. 4.2 / GFR 170'}
-            {canvasTab === 'pdf' && 'Two-Cover Rule'}
+            {canvasTab === 'pdf' && 'Two-Cover Verification'}
             {canvasTab === 'boq' && 'CPWD Schedule B'}
             {canvasTab === 'compiler' && 'Forms A–G Proformas'}
           </span>

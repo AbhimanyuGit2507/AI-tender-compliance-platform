@@ -56,34 +56,34 @@ export function renderInlineMarkdown(text, onCitationClick) {
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 4,
-            padding: '1px 7px',
+            gap: 5,
+            padding: '2px 8px',
             margin: '0 3px',
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 600,
-            borderRadius: 4,
-            background: 'rgba(2, 132, 199, 0.12)',
+            borderRadius: 5,
+            background: 'rgba(2, 132, 199, 0.14)',
             color: '#38BDF8',
-            border: '1px solid rgba(56, 189, 248, 0.35)',
+            border: '1px solid rgba(56, 189, 248, 0.40)',
             cursor: 'pointer',
             verticalAlign: 'baseline',
             transition: 'all 150ms ease',
             fontFamily: 'var(--font-mono, monospace)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(2, 132, 199, 0.25)';
+            e.currentTarget.style.background = 'rgba(2, 132, 199, 0.28)';
             e.currentTarget.style.borderColor = '#38BDF8';
             e.currentTarget.style.transform = 'translateY(-1px)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(2, 132, 199, 0.12)';
-            e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.35)';
+            e.currentTarget.style.background = 'rgba(2, 132, 199, 0.14)';
+            e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.40)';
             e.currentTarget.style.transform = 'translateY(0)';
           }}
         >
-          <FileText size={10} style={{ opacity: 0.8 }} />
+          <FileText size={11} style={{ opacity: 0.85 }} />
           <span>{inner.replace(/^Source\s*\d+,\s*/i, '')}</span>
-          <ExternalLink size={9} style={{ opacity: 0.6 }} />
+          <ExternalLink size={10} style={{ opacity: 0.7 }} />
         </button>
       );
     } else if (matchStr.startsWith('**') && matchStr.endsWith('**')) {
@@ -182,10 +182,10 @@ export function CopilotMarkdown({ content, onCitationClick }) {
             <h3
               key={`h2-${idx}`}
               style={{
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: 750,
                 color: 'var(--text-primary, #F8FAFC)',
-                margin: '14px 0 6px 0',
+                margin: '16px 0 8px 0',
                 letterSpacing: '-0.01em',
               }}
             >
@@ -203,18 +203,18 @@ export function CopilotMarkdown({ content, onCitationClick }) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                marginTop: 14,
-                marginBottom: 6,
-                padding: '4px 10px',
-                borderRadius: 6,
-                background: 'rgba(249, 115, 22, 0.08)',
+                marginTop: 16,
+                marginBottom: 8,
+                padding: '6px 12px',
+                borderRadius: 7,
+                background: 'rgba(249, 115, 22, 0.09)',
                 borderLeft: '3px solid var(--accent-primary, #F97316)',
               }}
             >
               <h4
                 style={{
                   margin: 0,
-                  fontSize: 13.5,
+                  fontSize: 14.5,
                   fontWeight: 700,
                   color: 'var(--accent-primary, #FB923C)',
                   letterSpacing: '-0.01em',
@@ -232,10 +232,10 @@ export function CopilotMarkdown({ content, onCitationClick }) {
             <h5
               key={`h4-${idx}`}
               style={{
-                fontSize: 12.5,
+                fontSize: 13.5,
                 fontWeight: 700,
                 color: '#38BDF8',
-                margin: '10px 0 4px 0',
+                margin: '12px 0 6px 0',
                 letterSpacing: '0.01em',
                 textTransform: 'uppercase',
               }}
@@ -255,11 +255,11 @@ export function CopilotMarkdown({ content, onCitationClick }) {
               key={`step-${idx}`}
               style={{
                 display: 'flex',
-                gap: 10,
+                gap: 12,
                 alignItems: 'flex-start',
-                margin: '6px 0',
-                padding: '6px 10px',
-                borderRadius: 6,
+                margin: '8px 0',
+                padding: '8px 12px',
+                borderRadius: 8,
                 background: 'var(--bg-elevated, rgba(255,255,255,0.03))',
                 border: '1px solid var(--border-subtle, rgba(255,255,255,0.06))',
               }}
@@ -269,12 +269,12 @@ export function CopilotMarkdown({ content, onCitationClick }) {
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: 20,
-                  height: 20,
+                  width: 22,
+                  height: 22,
                   borderRadius: '50%',
                   background: 'rgba(249, 115, 22, 0.2)',
                   color: 'var(--accent-primary, #F97316)',
-                  fontSize: 11,
+                  fontSize: 11.5,
                   fontWeight: 800,
                   flexShrink: 0,
                   marginTop: 2,
@@ -282,7 +282,7 @@ export function CopilotMarkdown({ content, onCitationClick }) {
               >
                 {stepNum}
               </span>
-              <div style={{ flex: 1, fontSize: 12.5 }}>
+              <div style={{ flex: 1, fontSize: 13.5, lineHeight: 1.6 }}>
                 {renderInlineMarkdown(stepBody, onCitationClick)}
               </div>
             </div>
@@ -296,22 +296,22 @@ export function CopilotMarkdown({ content, onCitationClick }) {
               key={`bullet-${idx}`}
               style={{
                 display: 'flex',
-                gap: 8,
+                gap: 9,
                 alignItems: 'flex-start',
-                margin: '4px 0',
+                margin: '6px 0',
                 paddingLeft: 4,
               }}
             >
               <span
                 style={{
                   color: 'var(--accent-primary, #F97316)',
-                  fontSize: 13,
-                  lineHeight: '19px',
+                  fontSize: 15,
+                  lineHeight: '22px',
                 }}
               >
                 •
               </span>
-              <div style={{ flex: 1, fontSize: 12.5 }}>
+              <div style={{ flex: 1, fontSize: 13.5, lineHeight: 1.6 }}>
                 {renderInlineMarkdown(line.slice(2), onCitationClick)}
               </div>
             </div>
@@ -330,12 +330,12 @@ export function CopilotMarkdown({ content, onCitationClick }) {
               style={{
                 display: 'grid',
                 gridTemplateColumns: `repeat(${cells.length}, 1fr)`,
-                gap: 8,
-                padding: '6px 10px',
+                gap: 10,
+                padding: '8px 12px',
                 background: 'var(--bg-elevated, rgba(255,255,255,0.04))',
-                borderRadius: 4,
-                margin: '3px 0',
-                fontSize: 12,
+                borderRadius: 6,
+                margin: '4px 0',
+                fontSize: 13,
                 border: '1px solid var(--border-subtle, rgba(255,255,255,0.08))',
               }}
             >
@@ -350,7 +350,7 @@ export function CopilotMarkdown({ content, onCitationClick }) {
 
         // Regular paragraph
         return (
-          <p key={`p-${idx}`} style={{ margin: '5px 0', fontSize: 12.5 }}>
+          <p key={`p-${idx}`} style={{ margin: '6px 0', fontSize: 13.5, lineHeight: 1.65 }}>
             {renderInlineMarkdown(line, onCitationClick)}
           </p>
         );

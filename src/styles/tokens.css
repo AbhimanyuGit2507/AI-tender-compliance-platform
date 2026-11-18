@@ -64,9 +64,9 @@
 
   /* ── Typography & Text Hierarchy ── */
   --color-text-primary:     #0F172A;   /* Slate 900 — Maximum readability */
-  --color-text-secondary:   #475569;   /* Slate 600 — Balanced secondary text */
-  --color-text-tertiary:    #64748B;   /* Slate 500 — Captions & metadata */
-  --color-text-muted:       #94A3B8;   /* Slate 400 — Placeholders & disabled */
+  --color-text-secondary:   #334155;   /* Slate 700 — High-clarity secondary text */
+  --color-text-tertiary:    #475569;   /* Slate 600 — Legible captions & metadata */
+  --color-text-muted:       #64748B;   /* Slate 500 — Placeholders & subtle icons */
   --color-text-disabled:    #CBD5E1;
   --color-text-inverse:     #FFFFFF;
 
@@ -75,18 +75,18 @@
   --font-body:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono:    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  /* ── Type Scale ── */
-  --text-xs:   11px;
-  --text-sm:   12px;
-  --text-base: 13.5px;
-  --text-md:   14.5px;
-  --text-lg:   16px;
-  --text-xl:   18px;
-  --text-2xl:  20px;
-  --text-3xl:  24px;
-  --text-4xl:  28px;
-  --text-5xl:  34px;
-  --text-6xl:  42px;
+  /* ── Type Scale (Enhanced for Maximum Readability) ── */
+  --text-xs:   12px;
+  --text-sm:   13px;
+  --text-base: 14.5px;
+  --text-md:   15.5px;
+  --text-lg:   17px;
+  --text-xl:   19px;
+  --text-2xl:  22px;
+  --text-3xl:  26px;
+  --text-4xl:  30px;
+  --text-5xl:  36px;
+  --text-6xl:  44px;
 
   /* ── Spacing Scale ── */
   --space-1:  4px;

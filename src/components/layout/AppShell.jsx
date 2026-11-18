@@ -137,7 +137,7 @@ export function AppShell({ children }) {
           }}
         />
       )}
-      {/* ── LEFT SLEEK STRUCTURAL RAIL (228px) ── */}
+      {/* ── LEFT SLEEK STRUCTURAL RAIL (248px) ── */}
       <aside className="agent-rail">
         {/* Brand Header */}
         <div
@@ -145,47 +145,47 @@ export function AppShell({ children }) {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
+            gap: 12,
             cursor: 'pointer',
-            padding: '8px 6px 18px',
+            padding: '10px 8px 20px',
           }}
         >
           <div
             style={{
-              width: 34,
-              height: 34,
-              borderRadius: 9,
-              background: 'linear-gradient(135deg, rgba(99,102,241,0.18) 0%, rgba(249,115,22,0.10) 100%)',
-              border: '1px solid rgba(99,102,241,0.28)',
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              background: 'linear-gradient(135deg, rgba(99,102,241,0.22) 0%, rgba(249,115,22,0.14) 100%)',
+              border: '1px solid rgba(99,102,241,0.32)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 2px 12px rgba(99,102,241,0.20)',
+              boxShadow: '0 2px 14px rgba(99,102,241,0.24)',
               flexShrink: 0,
             }}
           >
-            <img src="/bidkaro-lightning-logo.png" alt="BidKaro Logo" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+            <img src="/bidkaro-lightning-logo.png" alt="BidKaro Logo" style={{ width: 30, height: 30, objectFit: 'contain' }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span
               style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 17,
-                fontWeight: 600,
+                fontSize: 19,
+                fontWeight: 700,
                 letterSpacing: '-0.02em',
                 color: 'var(--text-primary)',
               }}
             >
               BidKaro
             </span>
-            <span style={{ fontSize: 9.5, color: 'var(--accent-primary)', fontFamily: 'var(--font-sans)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <span style={{ fontSize: 11, color: 'var(--accent-primary)', fontFamily: 'var(--font-sans)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Tender Intelligence
             </span>
           </div>
         </div>
 
         {/* Navigation Items */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 4 }}>
           {navItems.map((item) => {
             const Icon = item.icon;
             const isLight = resolvedTheme === 'light';
@@ -196,11 +196,11 @@ export function AppShell({ children }) {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 10,
-                  padding: '8px 10px',
-                  borderRadius: 9,
+                  gap: 12,
+                  padding: '10px 12px',
+                  borderRadius: 10,
                   textDecoration: 'none',
-                  fontSize: 12.5,
+                  fontSize: 14,
                   fontFamily: 'var(--font-sans)',
                   fontWeight: item.active ? 600 : 500,
                   color: item.active ? 'var(--text-primary)' : 'var(--text-secondary)',
@@ -213,13 +213,13 @@ export function AppShell({ children }) {
                   transition: 'all 160ms cubic-bezier(0.16, 1, 0.3, 1)',
                 }}
               >
-                <Icon size={15} color={item.active ? 'var(--accent-primary)' : 'var(--text-muted)'} />
+                <Icon size={17} color={item.active ? 'var(--accent-primary)' : 'var(--text-muted)'} />
                 <span style={{ flex: 1 }}>{item.label}</span>
                 {item.hasAlert && (
                   <span
                     style={{
-                      width: 6,
-                      height: 6,
+                      width: 7,
+                      height: 7,
                       borderRadius: '50%',
                       background: 'var(--status-warn)',
                       boxShadow: '0 0 6px var(--status-warn)',
@@ -229,16 +229,16 @@ export function AppShell({ children }) {
                 {item.badge && !item.hasAlert && (
                   <span
                     style={{
-                      fontSize: 10,
-                      fontWeight: 600,
-                      padding: '1px 6px',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: '2px 8px',
                       borderRadius: 999,
                       background: item.active
                         ? 'var(--accent-primary)'
-                        : (isLight ? 'rgba(15, 23, 42, 0.06)' : 'rgba(255, 255, 255, 0.06)'),
+                        : (isLight ? 'rgba(15, 23, 42, 0.08)' : 'rgba(255, 255, 255, 0.08)'),
                       color: item.active
                         ? '#FFFFFF'
-                        : 'var(--text-secondary)',
+                        : 'var(--text-primary)',
                       fontFamily: 'var(--font-mono)',
                     }}
                   >
@@ -254,12 +254,12 @@ export function AppShell({ children }) {
         <div style={{ marginTop: 22, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <div
             style={{
-              fontSize: 10,
+              fontSize: 11.5,
               fontWeight: 700,
               color: 'var(--text-muted)',
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
-              padding: '0 6px 8px',
+              padding: '0 8px 8px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -273,12 +273,13 @@ export function AppShell({ children }) {
                 border: 'none',
                 color: 'var(--text-muted)',
                 cursor: 'pointer',
-                padding: 2,
+                padding: 3,
                 display: 'flex',
+                borderRadius: 4,
               }}
               title="New Tender"
             >
-              <Plus size={12} />
+              <Plus size={14} />
             </button>
           </div>
 
@@ -286,7 +287,7 @@ export function AppShell({ children }) {
             style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: 3,
+              gap: 4,
               overflowY: 'auto',
               maxHeight: 180,
             }}
@@ -300,19 +301,20 @@ export function AppShell({ children }) {
                     key={t.id}
                     onClick={() => navigate(`/workspace/${t.id}`)}
                     style={{
-                      padding: '6px 8px',
-                      borderRadius: 7,
+                      padding: '8px 10px',
+                      borderRadius: 8,
                       cursor: 'pointer',
-                      fontSize: 11.5,
+                      fontSize: 13,
+                      fontWeight: isSelected ? 600 : 500,
                       color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
                       background: isSelected
-                        ? (isLight ? 'rgba(37, 99, 235, 0.10)' : 'rgba(59, 130, 246, 0.15)')
+                        ? (isLight ? 'rgba(37, 99, 235, 0.12)' : 'rgba(59, 130, 246, 0.16)')
                         : 'transparent',
-                      borderLeft: isSelected ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                      borderLeft: isSelected ? '3px solid var(--accent-primary)' : '3px solid transparent',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      gap: 6,
+                      gap: 8,
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -323,8 +325,8 @@ export function AppShell({ children }) {
                     </span>
                     <span
                       style={{
-                        fontSize: 10,
-                        fontWeight: 600,
+                        fontSize: 11,
+                        fontWeight: 700,
                         fontFamily: 'var(--font-mono)',
                         color: t.verdict === 'Qualified' ? 'var(--status-pass-text)' : 'var(--status-warn-text)',
                         flexShrink: 0,
@@ -338,8 +340,8 @@ export function AppShell({ children }) {
             ) : (
               <div
                 style={{
-                  padding: '8px 6px',
-                  fontSize: 11,
+                  padding: '8px 8px',
+                  fontSize: 12,
                   color: 'var(--text-muted)',
                   fontStyle: 'italic',
                 }}
@@ -353,17 +355,18 @@ export function AppShell({ children }) {
             className="btn btn-primary"
             style={{
               width: '100%',
-              marginTop: 10,
-              padding: '7px 10px',
-              fontSize: 12,
-              borderRadius: 6,
+              marginTop: 12,
+              padding: '9px 12px',
+              fontSize: 13,
+              fontWeight: 600,
+              borderRadius: 8,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 6,
+              gap: 7,
             }}
           >
-            <Plus size={13} />
+            <Plus size={15} />
             <span>Upload NIT Document</span>
           </button>
         </div>
@@ -377,22 +380,22 @@ export function AppShell({ children }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '6px 10px',
+              padding: '8px 12px',
               borderRadius: 8,
               cursor: 'pointer',
               color: 'var(--text-secondary)',
-              fontSize: 11.5,
+              fontSize: 12.5,
               background: resolvedTheme === 'light' ? 'rgba(15, 23, 42, 0.05)' : 'rgba(255, 255, 255, 0.04)',
               border: '1px solid var(--border-subtle)',
               marginBottom: 10,
               transition: 'all 140ms ease',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              {resolvedTheme === 'dark' ? <Moon size={13} color="var(--accent-primary)" /> : <Sun size={13} color="#D97706" />}
-              <span style={{ fontWeight: 500 }}>{resolvedTheme === 'dark' ? 'Obsidian Dark' : 'Alabaster Light'}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {resolvedTheme === 'dark' ? <Moon size={15} color="var(--accent-primary)" /> : <Sun size={15} color="#D97706" />}
+              <span style={{ fontWeight: 600 }}>{resolvedTheme === 'dark' ? 'Obsidian Dark' : 'Alabaster Light'}</span>
             </div>
-            <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>Switch</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>Switch</span>
           </div>
 
           {/* Company Entity Card */}
@@ -408,26 +411,26 @@ export function AppShell({ children }) {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 9,
-                  padding: '8px 10px',
+                  gap: 10,
+                  padding: '9px 12px',
                   borderRadius: 9,
                   cursor: 'pointer',
-                  background: isLight ? 'rgba(255, 255, 255, 0.90)' : 'rgba(255, 255, 255, 0.04)',
+                  background: isLight ? 'rgba(255, 255, 255, 0.90)' : 'rgba(255, 255, 255, 0.05)',
                   border: '1px solid var(--border-subtle)',
                   boxShadow: isLight ? '0 2px 8px rgba(15, 23, 42, 0.04)' : 'none',
                 }}
               >
                 <div
                   style={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: 7,
+                    width: 30,
+                    height: 30,
+                    borderRadius: 8,
                     background: 'rgba(16, 185, 129, 0.15)',
                     color: 'var(--status-pass-text)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 700,
                     fontFamily: 'var(--font-mono)',
                     flexShrink: 0,
@@ -438,7 +441,7 @@ export function AppShell({ children }) {
                 <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
                   <span
                     style={{
-                      fontSize: 12,
+                      fontSize: 13.5,
                       fontWeight: 600,
                       color: 'var(--text-primary)',
                       overflow: 'hidden',
@@ -449,10 +452,10 @@ export function AppShell({ children }) {
                   >
                     {orgName}
                   </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                     <span
                       style={{
-                        fontSize: 10,
+                        fontSize: 11.5,
                         color: 'var(--text-muted)',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -464,11 +467,11 @@ export function AppShell({ children }) {
                     </span>
                     <span
                       style={{
-                        fontSize: 9.5,
+                        fontSize: 10.5,
                         fontWeight: 700,
                         color: '#10B981',
-                        background: 'rgba(16, 185, 129, 0.12)',
-                        padding: '1px 5px',
+                        background: 'rgba(16, 185, 129, 0.14)',
+                        padding: '1px 6px',
                         borderRadius: 4,
                         whiteSpace: 'nowrap',
                       }}
@@ -487,9 +490,9 @@ export function AppShell({ children }) {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#64748B',
+                    color: '#94a3b8',
                     cursor: 'pointer',
-                    padding: '4px',
+                    padding: '5px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -499,9 +502,9 @@ export function AppShell({ children }) {
                   }}
                   title="Sign Out"
                   onMouseEnter={(e) => (e.currentTarget.style.color = '#EF4444')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = '#64748B')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
                 >
-                  <LogOut size={13} />
+                  <LogOut size={15} />
                 </button>
               </div>
             );
@@ -512,17 +515,16 @@ export function AppShell({ children }) {
       {/* ── FLOATING INSET WORKSPACE CANVAS ISLAND ── */}
       <main className="agent-canvas-island">
         {/* Top Minimalist Glass Bar */}
-        <header className="island-topbar">
+        <header className="island-topbar" style={{ minHeight: 56, padding: '0 24px' }}>
           {/* Left: Breadcrumb */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-
             <div
               style={{
-                fontSize: 12.5,
+                fontSize: 14,
                 fontFamily: 'var(--font-heading)',
                 fontWeight: 600,
                 letterSpacing: '-0.01em',
-                color: 'var(--text-secondary)',
+                color: 'var(--text-primary)',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -533,23 +535,23 @@ export function AppShell({ children }) {
           </div>
 
           {/* Right: Daily Pass + Credit Pill + Vault Health */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
             {dailyFreeAvailable && (
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 5,
-                  fontSize: 11,
+                  gap: 6,
+                  fontSize: 12,
                   fontWeight: 600,
-                  padding: '3px 9px',
+                  padding: '5px 12px',
                   borderRadius: 999,
                   background: 'var(--accent-subtle)',
                   color: 'var(--accent-primary)',
                   border: '1px solid var(--accent-border)',
                 }}
               >
-                <Zap size={11} />
+                <Zap size={13} />
                 <span>Daily Free Screening: Ready</span>
               </div>
             )}
@@ -560,19 +562,19 @@ export function AppShell({ children }) {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 5,
-                fontSize: 11.5,
+                gap: 6,
+                fontSize: 12,
                 fontWeight: 600,
-                padding: '4px 10px',
+                padding: '5px 12px',
                 borderRadius: 999,
                 background: 'var(--bg-elevated)',
                 border: '1px solid var(--border-subtle)',
-                color: hasVaultIssues ? 'var(--status-warn-text)' : 'var(--text-secondary)',
+                color: hasVaultIssues ? 'var(--status-warn-text)' : 'var(--text-primary)',
                 cursor: 'pointer',
               }}
               title="Inspect Company Qualification Vault"
             >
-              <ShieldCheck size={13} color={hasVaultIssues ? 'var(--status-warn)' : 'var(--status-pass)'} />
+              <ShieldCheck size={14} color={hasVaultIssues ? 'var(--status-warn)' : 'var(--status-pass)'} />
               <span>Vault: {hasVaultIssues ? 'Warning' : '92% Match'}</span>
             </button>
 
@@ -582,10 +584,10 @@ export function AppShell({ children }) {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 5,
-                fontSize: 11.5,
+                gap: 6,
+                fontSize: 12,
                 fontWeight: 700,
-                padding: '4px 11px',
+                padding: '5px 12px',
                 borderRadius: 999,
                 background: 'rgba(16, 185, 129, 0.12)',
                 border: '1px solid rgba(16, 185, 129, 0.28)',
@@ -595,7 +597,7 @@ export function AppShell({ children }) {
               }}
               title="Active Subscription Plan: Click to manage in Settings"
             >
-              <Sparkles size={11} color="#10B981" />
+              <Sparkles size={13} color="#10B981" />
               <span>{getPlanName(planTier)}</span>
             </div>
 
@@ -605,12 +607,12 @@ export function AppShell({ children }) {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 7,
-                padding: '4px 11px',
+                gap: 8,
+                padding: '5px 13px',
                 borderRadius: 999,
                 background: 'var(--accent-gradient)',
                 color: '#FFFFFF',
-                fontSize: 11.5,
+                fontSize: 12.5,
                 fontWeight: 700,
                 fontFamily: 'var(--font-mono)',
                 cursor: 'pointer',
@@ -619,9 +621,9 @@ export function AppShell({ children }) {
               }}
               title="Click to Top Up Credits"
             >
-              <Zap size={12} fill="#FFFFFF" />
+              <Zap size={13} fill="#FFFFFF" />
               <span>{credits} Cr</span>
-              <span style={{ fontSize: 10, opacity: 0.85, fontWeight: 500 }}>· Top Up</span>
+              <span style={{ fontSize: 11, opacity: 0.9, fontWeight: 500 }}>· Top Up</span>
             </div>
           </div>
         </header>

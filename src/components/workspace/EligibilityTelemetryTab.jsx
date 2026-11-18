@@ -178,16 +178,18 @@ export function EligibilityTelemetryTab({
   // Procurement Math & Qualification Calculations
   const tenderVal = currentTender.estimatedValueCr || 0;
   const userTurnover = companyVault?.turnover3YrAvgCr || 0;
+  const hasVaultTurnover = userTurnover > 0;
   const turnoverReq = tenderVal > 0 ? Number((tenderVal * 0.5).toFixed(2)) : 0;
-  const turnoverRatio = turnoverReq > 0 ? Math.round((userTurnover / turnoverReq) * 100) : 100;
-  const turnoverPassed = turnoverReq > 0 ? userTurnover >= turnoverReq : true;
+  const turnoverRatio = turnoverReq > 0 && hasVaultTurnover ? Math.round((userTurnover / turnoverReq) * 100) : 0;
+  const turnoverPassed = turnoverReq > 0 && hasVaultTurnover ? userTurnover >= turnoverReq : hasVaultTurnover;
 
   const N = currentTender.contractPeriodYears || 1.0;
   const maxTurnoverA = companyVault?.maxTurnoverACr || companyVault?.turnover3YrAvgCr || 0;
+  const hasVaultCapacity = maxTurnoverA > 0;
   const existingCommitmentsB = companyVault?.existingCommitmentsBCr || 0;
   const availableBidCapacity = Math.max(0, 2 * maxTurnoverA * N - existingCommitmentsB);
-  const capacityRatio = tenderVal > 0 && maxTurnoverA > 0 ? Math.round((availableBidCapacity / tenderVal) * 100) : 100;
-  const capacityPassed = tenderVal > 0 && maxTurnoverA > 0 ? availableBidCapacity >= tenderVal : true;
+  const capacityRatio = tenderVal > 0 && hasVaultCapacity ? Math.round((availableBidCapacity / tenderVal) * 100) : 0;
+  const capacityPassed = tenderVal > 0 && hasVaultCapacity ? availableBidCapacity >= tenderVal : hasVaultCapacity;
   const capacitySurplus = (availableBidCapacity - tenderVal).toFixed(2);
 
   const readiness =
@@ -195,27 +197,27 @@ export function EligibilityTelemetryTab({
       ? liveCompliance.readiness_score
       : currentTender.readinessScore || 0;
 
-  const isFullyQualified = readiness >= 70 && turnoverPassed && capacityPassed;
+  const isFullyQualified = readiness >= 70 && turnoverPassed && capacityPassed && hasVaultTurnover;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Executive Verdict Banner */}
       <div
         className="glass-pod"
         style={{
-          padding: '16px 18px',
+          padding: '18px 20px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           border: isFullyQualified ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid var(--border-strong)',
-          background: isFullyQualified ? 'rgba(16, 185, 129, 0.04)' : 'var(--bg-surface)',
+          background: isFullyQualified ? 'rgba(16, 185, 129, 0.05)' : 'var(--bg-surface)',
         }}
       >
         <div style={{ flex: 1, paddingRight: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
             <span
               className={`badge-status ${isFullyQualified ? 'pass' : readiness > 40 ? 'warn' : 'fail'}`}
-              style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}
+              style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', padding: '3px 8px' }}
             >
               {isFullyQualified ? 'Bid Qualification: Cleared' : 'Qualification Audit in Progress'}
             </span>
@@ -223,23 +225,23 @@ export function EligibilityTelemetryTab({
 
           <div
             style={{
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: 800,
               fontFamily: 'var(--font-display)',
               letterSpacing: '-0.02em',
               color: 'var(--text-primary)',
-              margin: '2px 0 4px',
+              margin: '3px 0 6px',
             }}
           >
             {readiness > 0 ? `${readiness}% Procurement Readiness` : 'Awaiting Audit'}
           </div>
 
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
             {isFullyQualified ? (
               <span style={{ color: 'var(--status-pass-text)', fontWeight: 600 }}>
                 ✓ Contractor satisfies all CPWD financial turnover, available bid capacity, and experience norms.
               </span>
-            ) : !capacityPassed && tenderVal > 0 ? (
+            ) : !capacityPassed && tenderVal > 0 && hasVaultCapacity ? (
               <span style={{ color: 'var(--status-warn-text)', fontWeight: 600 }}>
                 ⚠️ Bidding Capacity shortfall: Assessed capacity is ₹{Math.abs(Number(capacitySurplus))} Cr below tender value. Consider a Joint Venture (JV) partnership.
               </span>
@@ -251,15 +253,15 @@ export function EligibilityTelemetryTab({
 
         <div
           style={{
-            width: 58,
-            height: 58,
+            width: 64,
+            height: 64,
             borderRadius: '50%',
-            background: isFullyQualified ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-elevated)',
+            background: isFullyQualified ? 'rgba(16, 185, 129, 0.15)' : 'var(--bg-elevated)',
             border: isFullyQualified ? '3px solid #10b981' : '2px dashed var(--border-subtle)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 18,
+            fontSize: 20,
             fontWeight: 800,
             color: isFullyQualified ? '#10b981' : 'var(--text-primary)',
             fontFamily: 'var(--font-mono)',
@@ -271,93 +273,100 @@ export function EligibilityTelemetryTab({
       </div>
 
       {/* Core Procurement Math Telemetry */}
-      <div className="glass-pod" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="glass-pod" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Statutory Procurement Math (CPWD / GFR Rules)
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
               Evaluated dynamically against your verified Company Vault
             </div>
           </div>
           <button
             onClick={() => navigate('/vault')}
             className="btn-agent btn-agent-secondary"
-            style={{ fontSize: 10.5, padding: '3px 8px' }}
+            style={{ fontSize: 11.5, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 5 }}
           >
-            Edit Vault <ExternalLink size={11} />
+            <span>Edit Vault</span>
+            <ExternalLink size={12} />
           </button>
         </div>
 
         {/* 1. 3-Year Average Turnover */}
-        <div style={{ padding: '10px 12px', background: 'var(--bg-surface)', borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>
+        <div style={{ padding: '12px 14px', background: 'var(--bg-surface)', borderRadius: 9, border: '1px solid var(--border-subtle)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
               1. 3-Yr Financial Turnover (CPWD Cl. 4.2)
             </span>
             <span
               style={{
                 fontFamily: 'var(--font-mono)',
-                fontSize: 11.5,
+                fontSize: 12.5,
                 fontWeight: 700,
-                color: turnoverPassed ? 'var(--status-pass-text)' : 'var(--status-warn-text)',
+                color: !hasVaultTurnover ? 'var(--status-warn-text)' : turnoverPassed ? 'var(--status-pass-text)' : 'var(--status-warn-text)',
               }}
             >
-              {turnoverReq > 0 && userTurnover > 0
-                ? `₹${userTurnover.toFixed(2)} Cr vs Req. ₹${turnoverReq.toFixed(2)} Cr (${turnoverRatio}%)`
+              {!hasVaultTurnover
+                ? 'Vault: Not Configured'
                 : turnoverReq > 0
-                ? `Req. Threshold: ₹${turnoverReq.toFixed(2)} Cr`
+                ? `₹${userTurnover.toFixed(2)} Cr vs Req. ₹${turnoverReq.toFixed(2)} Cr (${turnoverRatio}%)`
                 : `Vault Average: ₹${userTurnover.toFixed(2)} Cr`}
             </span>
           </div>
 
-          <div className="telemetry-bar-track" style={{ height: 6, margin: '6px 0' }}>
+          <div className="telemetry-bar-track" style={{ height: 6, margin: '8px 0' }}>
             <div
               className="telemetry-bar-fill"
               style={{
                 width: `${Math.min(100, turnoverRatio)}%`,
-                background: turnoverPassed ? '#10b981' : '#f59e0b',
+                background: !hasVaultTurnover ? '#f59e0b' : turnoverPassed ? '#10b981' : '#f59e0b',
               }}
             />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: 'var(--text-tertiary)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
             <span>Statutory Requirement: 50% of annual tender value</span>
-            <span style={{ fontWeight: 600, color: turnoverPassed ? '#10b981' : '#f59e0b' }}>
-              {turnoverPassed ? `✓ QUALIFIED (Surplus: +₹${(userTurnover - turnoverReq).toFixed(2)} Cr)` : '⚠️ Shortfall in turnover'}
+            <span style={{ fontWeight: 600, color: !hasVaultTurnover ? '#f59e0b' : turnoverPassed ? '#10b981' : '#f59e0b' }}>
+              {!hasVaultTurnover
+                ? '○ PENDING VAULT SETUP · Add 3-Yr Audited Turnover'
+                : turnoverReq > 0
+                ? turnoverPassed
+                  ? `✓ QUALIFIED (Surplus: +₹${(userTurnover - turnoverReq).toFixed(2)} Cr)`
+                  : '⚠️ Shortfall in turnover'
+                : '✓ Turnover recorded'}
             </span>
           </div>
         </div>
 
         {/* 2. Assessed Available Bid Capacity */}
-        <div style={{ padding: '10px 12px', background: 'var(--bg-surface)', borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>
+        <div style={{ padding: '12px 14px', background: 'var(--bg-surface)', borderRadius: 9, border: '1px solid var(--border-subtle)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
               2. Available Bid Capacity: 2 × A × N - B
             </span>
             <span
               style={{
                 fontFamily: 'var(--font-mono)',
-                fontSize: 11.5,
+                fontSize: 12.5,
                 fontWeight: 700,
-                color: capacityPassed ? 'var(--status-pass-text)' : 'var(--status-warn-text)',
+                color: !hasVaultCapacity ? 'var(--status-warn-text)' : capacityPassed ? 'var(--status-pass-text)' : 'var(--status-warn-text)',
               }}
             >
-              {tenderVal > 0 && maxTurnoverA > 0
-                ? `₹${availableBidCapacity.toFixed(2)} Cr vs Tender ₹${tenderVal.toFixed(2)} Cr`
+              {!hasVaultCapacity
+                ? 'Vault: Pending Setup'
                 : tenderVal > 0
-                ? `Tender Value: ₹${tenderVal.toFixed(2)} Cr`
+                ? `₹${availableBidCapacity.toFixed(2)} Cr vs Tender ₹${tenderVal.toFixed(2)} Cr`
                 : `Assessed Capacity: ₹${availableBidCapacity.toFixed(2)} Cr`}
             </span>
           </div>
 
-          <div className="telemetry-bar-track" style={{ height: 6, margin: '6px 0' }}>
+          <div className="telemetry-bar-track" style={{ height: 6, margin: '8px 0' }}>
             <div
               className="telemetry-bar-fill"
               style={{
                 width: `${Math.min(100, capacityRatio)}%`,
-                background: capacityPassed ? '#10b981' : '#ef4444',
+                background: !hasVaultCapacity ? '#f59e0b' : capacityPassed ? '#10b981' : '#ef4444',
               }}
             />
           </div>
@@ -365,15 +374,15 @@ export function EligibilityTelemetryTab({
           {/* Formula Parameter Details */}
           <div
             style={{
-              padding: '6px 8px',
+              padding: '8px 10px',
               background: 'var(--bg-elevated)',
-              borderRadius: 6,
-              fontSize: 10.5,
+              borderRadius: 7,
+              fontSize: 12,
               color: 'var(--text-secondary)',
-              marginTop: 6,
+              marginTop: 8,
               display: 'flex',
               flexDirection: 'column',
-              gap: 2,
+              gap: 4,
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -388,30 +397,34 @@ export function EligibilityTelemetryTab({
               <span>
                 <strong>B</strong> (Existing commitments on hand): <strong>₹{existingCommitmentsB.toFixed(2)} Cr</strong>
               </span>
-              <span style={{ fontWeight: 700, color: capacityPassed ? '#10b981' : '#ef4444' }}>
-                {capacityPassed ? `Headroom: +₹${capacitySurplus} Cr` : `Shortfall: -₹${Math.abs(Number(capacitySurplus))} Cr`}
+              <span style={{ fontWeight: 700, color: !hasVaultCapacity ? '#f59e0b' : capacityPassed ? '#10b981' : '#ef4444' }}>
+                {!hasVaultCapacity
+                  ? '○ Vault profile required'
+                  : capacityPassed
+                  ? `Headroom: +₹${capacitySurplus} Cr`
+                  : `Shortfall: -₹${Math.abs(Number(capacitySurplus))} Cr`}
               </span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
             <button
               onClick={() => setJvModalOpen(true)}
               style={{
-                padding: '4px 10px',
-                borderRadius: 6,
-                background: 'rgba(139, 92, 246, 0.12)',
-                border: '1px solid rgba(139, 92, 246, 0.3)',
-                color: '#a78bfa',
-                fontSize: 11,
+                padding: '6px 12px',
+                borderRadius: 7,
+                background: 'rgba(139, 92, 246, 0.14)',
+                border: '1px solid rgba(139, 92, 246, 0.35)',
+                color: '#c4b5fd',
+                fontSize: 12,
                 fontWeight: 600,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 5,
+                gap: 6,
               }}
             >
-              <Users size={12} /> Test Joint Venture (JV) Split Solver
+              <Users size={14} /> Test Joint Venture (JV) Split Solver
             </button>
           </div>
         </div>
@@ -419,39 +432,54 @@ export function EligibilityTelemetryTab({
         {/* 3. Bank Guarantee & EMD Rule Audit Card */}
         <div
           style={{
-            padding: '10px 12px',
+            padding: '12px 14px',
             background: 'var(--bg-surface)',
             border: '1px solid var(--border-subtle)',
-            borderRadius: 8,
-            fontSize: 11.5,
+            borderRadius: 9,
+            fontSize: 12.5,
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 13.5 }}>
               3. Bank Guarantee & EMD Mandate
             </span>
-            <span style={{ color: '#10b981', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-              Req. Validity: 165 Days (120+45)
+            <span
+              style={{
+                color: currentTender.emdLakhs === 0 ? '#10b981' : '#f59e0b',
+                fontWeight: 700,
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12,
+              }}
+            >
+              {currentTender.emdLakhs === 0 ? '✓ NIL EMD / Exempted' : `Req. Validity: 165 Days (120+45)`}
             </span>
           </div>
-          <div style={{ color: 'var(--text-secondary)', lineHeight: 1.45, fontSize: 11 }}>
-            ⚠️ <strong>GFR 170 / CPWD Manual Sec 18.2 Warning:</strong> MSME EMD exemption is strictly disallowed for Works/Civil contracts. BGs must be issued via SFMS to designated nodal branch IFSC.
+          <div style={{ color: 'var(--text-secondary)', lineHeight: 1.5, fontSize: 12 }}>
+            {currentTender.emdLakhs === 0 ? (
+              <span>
+                <strong style={{ color: '#10b981' }}>✓ EMD Exemption Verified:</strong> Notice Inviting Tender specifies NIL EMD / Exemption. Contractor must submit the statutory Bid Security Declaration Form (Annexure-C as per Rule 170 GFR 2017) on official letterhead.
+              </span>
+            ) : (
+              <span>
+                <strong>EMD Mandate:</strong> EMD of ₹{currentTender.emdLakhs} Lakhs is payable via Bank Guarantee / FDR / Demand Draft. SFMS transmission must be verified at the designated nodal branch.
+              </span>
+            )}
           </div>
         </div>
 
         {/* 4. Past Experience (CPWD 3/2/1 Rule) */}
-        <div style={{ padding: '10px 12px', background: 'var(--bg-surface)', borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>
+        <div style={{ padding: '12px 14px', background: 'var(--bg-surface)', borderRadius: 9, border: '1px solid var(--border-subtle)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
               4. Similar Experience (CPWD 3/2/1 Rule)
             </span>
-            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-tertiary)', fontSize: 11 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: 12 }}>
               {companyVault?.projects?.length || 0} Projects Recorded
             </span>
           </div>
 
-          <div style={{ fontSize: 10.5, color: 'var(--text-tertiary)', marginBottom: 8 }}>
-            Threshold: 1 work $\ge$ 80% (₹{(tenderVal * 0.8).toFixed(2)} Cr) OR 2 works $\ge$ 60% (₹{(tenderVal * 0.6).toFixed(2)} Cr) OR 3 works $\ge$ 40% (₹{(tenderVal * 0.4).toFixed(2)} Cr)
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 8, lineHeight: 1.4 }}>
+            Threshold: 1 work ≥ 80% (₹{(tenderVal * 0.8).toFixed(2)} Cr) OR 2 works ≥ 60% (₹{(tenderVal * 0.6).toFixed(2)} Cr) OR 3 works ≥ 40% (₹{(tenderVal * 0.4).toFixed(2)} Cr)
           </div>
 
           {companyVault?.projects && companyVault.projects.length > 0 ? (
@@ -460,18 +488,18 @@ export function EligibilityTelemetryTab({
                 const meetsThreshold = tenderVal > 0 ? proj.valueCr >= tenderVal * 0.4 : true;
                 return (
                   <div key={pIdx}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
                       <span>{proj.name} ({proj.year || 'Completed'})</span>
                       <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: meetsThreshold ? '#10b981' : 'var(--text-primary)' }}>
                         ₹{proj.valueCr} Cr {meetsThreshold ? '· QUALIFIED' : ''}
                       </span>
                     </div>
-                    <div className="telemetry-bar-track" style={{ height: 4, marginTop: 2 }}>
+                    <div className="telemetry-bar-track" style={{ height: 5, marginTop: 3 }}>
                       <div
                         className="telemetry-bar-fill"
                         style={{
                           width: `${Math.min(100, tenderVal > 0 ? Math.round((proj.valueCr / (tenderVal * 0.5)) * 100) : 100)}%`,
-                          background: meetsThreshold ? '#10b981' : 'var(--text-tertiary)',
+                          background: meetsThreshold ? '#10b981' : 'var(--text-muted)',
                         }}
                       />
                     </div>
@@ -480,7 +508,7 @@ export function EligibilityTelemetryTab({
               })}
             </div>
           ) : (
-            <div style={{ padding: '8px 10px', background: 'var(--bg-elevated)', borderRadius: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
+            <div style={{ padding: '9px 12px', background: 'var(--bg-elevated)', borderRadius: 7, fontSize: 12, color: 'var(--text-secondary)' }}>
               No past project completion certificates linked in Vault. Add them to automatically satisfy experience checks.
             </div>
           )}
