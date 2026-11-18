@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, FileText, CheckCircle, Zap, Shield, Search, ChevronRight, Paperclip, Loader2, Bot, ArrowUpRight } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
-import { CopilotMarkdown } from '../components/chat/CopilotMarkdown';
+import { CopilotMarkdown } from '../components/workspace/CopilotMarkdown';
 
 const SUGGESTED_PROMPTS = [
   { text: "What is the EMD amount and bank guarantee requirement?", icon: FileText, color: "blue" },

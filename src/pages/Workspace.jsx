@@ -46,7 +46,7 @@ import { DocumentProofTab } from '../components/workspace/DocumentProofTab';
 import { BOQCorrigendaTab } from '../components/workspace/BOQCorrigendaTab';
 import { BidPackageCompilerTab } from '../components/workspace/BidPackageCompilerTab';
 import { GeminiThinkingBlock } from '../components/workspace/GeminiThinkingBlock';
-import { CopilotMarkdown } from '../components/chat/CopilotMarkdown';
+import { CopilotMarkdown } from '../components/workspace/CopilotMarkdown';
 
 export function Workspace() {
   const { tenderId } = useParams();
