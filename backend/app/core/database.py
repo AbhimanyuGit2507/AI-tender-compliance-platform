@@ -32,12 +32,23 @@ def get_engine():
         settings = get_settings()
         is_worker = os.environ.get("CELERY_WORKER", "").lower() in ("1", "true", "yes")
         is_testing = "pytest" in sys.modules or settings.app_env == "test"
+
+        # Prepare connect_args for SSL if on remote cloud database (Render / Neon / Supabase)
+        connect_args = {}
+        if "render.com" in settings.database_url or "oregon-postgres" in settings.database_url or "dpg-" in settings.database_url:
+            import ssl
+            ssl_ctx = ssl.create_default_context()
+            ssl_ctx.check_hostname = False
+            ssl_ctx.verify_mode = ssl.CERT_NONE
+            connect_args["ssl"] = ssl_ctx
+
         if is_worker or is_testing:
             _engine = create_async_engine(
                 settings.database_url,
                 poolclass=NullPool,
                 echo=settings.app_debug,
                 future=True,
+                connect_args=connect_args,
             )
         else:
             _engine = create_async_engine(
@@ -49,6 +60,7 @@ def get_engine():
                 pool_recycle=1800,
                 echo=settings.app_debug,
                 future=True,
+                connect_args=connect_args,
             )
     return _engine
 
