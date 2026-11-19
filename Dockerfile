@@ -16,6 +16,9 @@ COPY backend/requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# Pre-cache FastEmbed ONNX model so startup is instant (0ms download)
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='BAAI/bge-small-en-v1.5')"
+
 # Copy backend application source
 COPY backend/ .
 

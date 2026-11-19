@@ -42,13 +42,14 @@ async def lifespan(app: FastAPI):
         storage=settings.storage_backend,
         embedding=settings.embedding_provider,
     )
-    # Pre-warm embedding model on startup (avoid cold start on first request)
+    # Pre-warm embedding model in non-blocking task so uvicorn starts instantly
     if settings.embedding_provider == "fastembed":
         try:
             from app.services.embeddings import get_embedding_service
             svc = get_embedding_service()
-            await svc.embed_query("warm up")
-            logger.info("embedding_model_warmed_up")
+            import asyncio
+            asyncio.create_task(svc.embed_query("warm up"))
+            logger.info("embedding_model_warming_up_async")
         except Exception as e:
             logger.warning("embedding_warmup_failed", error=str(e))
 
