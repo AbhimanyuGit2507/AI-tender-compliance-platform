@@ -59,6 +59,11 @@ class ApiService {
   }
 
   async request(endpoint, options = {}, isRetry = false) {
+    const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+    const targetUrl = (endpoint.startsWith('http://') || endpoint.startsWith('https://') || !apiBase)
+      ? endpoint
+      : `${apiBase}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+
     const headers = {
       ...(options.headers || {}),
     };
@@ -73,7 +78,7 @@ class ApiService {
     }
 
     try {
-      const response = await fetch(endpoint, {
+      const response = await fetch(targetUrl, {
         ...options,
         headers,
       });
@@ -417,7 +422,8 @@ class ApiService {
   }
 
   getTenderPageImageUrl(tenderId, pageNumber = 1, options = {}) {
-    let url = `/api/tenders/${tenderId}/pages/${pageNumber}/image`;
+    const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+    let url = `${apiBase}/api/tenders/${tenderId}/pages/${pageNumber}/image`;
     const params = new URLSearchParams();
     if (options.highlightClause) params.set('highlight_clause', options.highlightClause);
     if (options.highlightText) params.set('highlight_text', options.highlightText);
@@ -426,7 +432,8 @@ class ApiService {
   }
 
   subscribeTenderStatus(tenderId, onProgress, onComplete, onError) {
-    const url = `/api/tenders/${tenderId}/status`;
+    const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+    const url = `${apiBase}/api/tenders/${tenderId}/status`;
     const eventSource = new EventSource(url);
 
     const handleEventData = (rawData) => {

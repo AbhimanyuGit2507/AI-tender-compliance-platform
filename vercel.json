@@ -4,6 +4,14 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/api/:match*",
+      "destination": "https://bidkaro-backend.onrender.com/api/:match*"
+    },
+    {
+      "source": "/storage/:match*",
+      "destination": "https://bidkaro-backend.onrender.com/storage/:match*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
