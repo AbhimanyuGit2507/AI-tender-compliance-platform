@@ -22,9 +22,12 @@ RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='BA
 # Copy backend application source
 COPY backend/ .
 
+# Set PYTHONPATH explicitly inside container
+ENV PYTHONPATH=/app
+
 # Pre-create upload directory
 RUN mkdir -p /app/uploads
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]

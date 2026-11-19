@@ -19,12 +19,15 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Pre-cache FastEmbed ONNX model so startup is instant (0ms download)
 RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='BAAI/bge-small-en-v1.5')"
 
-# Copy application source
+# Copy backend application source
 COPY . .
+
+# Set PYTHONPATH explicitly inside container
+ENV PYTHONPATH=/app
 
 # Pre-create upload directory
 RUN mkdir -p /app/uploads
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
