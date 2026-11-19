@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.config import get_settings
 from app.api import (
     admin,
+    advanced_ai,
     auth,
     boq,
     company,
@@ -211,6 +212,7 @@ def create_app() -> FastAPI:
     app.include_router(corrigendum.router)
     app.include_router(company.router)
     app.include_router(generation.router)
+    app.include_router(advanced_ai.router)
     app.include_router(plans.router)
     app.include_router(admin.router)
     app.include_router(newsletter.router)

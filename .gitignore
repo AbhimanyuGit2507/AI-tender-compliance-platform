@@ -54,3 +54,4 @@ test_downloads/
 *.njsproj
 *.sln
 *.sw?
+.vercel

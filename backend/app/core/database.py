@@ -1,6 +1,8 @@
 """
 BidKaro — Async Database Engine & Session Management (SQLAlchemy 2.x)
 """
+import os
+import sys
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -10,6 +12,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import AsyncAdaptedQueuePool, NullPool
 
 from app.core.config import get_settings
 
@@ -27,13 +30,26 @@ def get_engine():
     global _engine
     if _engine is None:
         settings = get_settings()
-        from sqlalchemy.pool import NullPool
-        _engine = create_async_engine(
-            settings.database_url,
-            poolclass=NullPool,
-            echo=settings.app_debug,
-            future=True,
-        )
+        is_worker = os.environ.get("CELERY_WORKER", "").lower() in ("1", "true", "yes")
+        is_testing = "pytest" in sys.modules or settings.app_env == "test"
+        if is_worker or is_testing:
+            _engine = create_async_engine(
+                settings.database_url,
+                poolclass=NullPool,
+                echo=settings.app_debug,
+                future=True,
+            )
+        else:
+            _engine = create_async_engine(
+                settings.database_url,
+                poolclass=AsyncAdaptedQueuePool,
+                pool_size=settings.db_pool_size,
+                max_overflow=settings.db_max_overflow,
+                pool_pre_ping=True,
+                pool_recycle=1800,
+                echo=settings.app_debug,
+                future=True,
+            )
     return _engine
 
 

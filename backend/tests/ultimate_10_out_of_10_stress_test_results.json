@@ -1,0 +1,125 @@
+{
+  "timestamp": "2026-11-19T11:31:00.267741+00:00",
+  "model_fast_text": "qwen/qwen3.8-27b",
+  "model_reasoning": "qwen/qwen3.8-27b",
+  "stages": {
+    "stage_1_triage_guard": {
+      "status": "invalid_document",
+      "readiness_score": 0,
+      "detected_title": "Personal Identity Document (Aadhaar Card) (aadhaar_identity.pdf)",
+      "suggested_action": "transfer_to_vault",
+      "latency_ms": 213
+    },
+    "stage_2_ingestion": {
+      "tender_id": "46ce9a4f-232e-4b4e-befa-41763e2ad5d9",
+      "requirements_extracted": 0,
+      "chunks_embedded": 0,
+      "latency_ms": 35667
+    },
+    "stage_3_initial_compliance": {
+      "overall_score": 100,
+      "overall_status": "COMPLIANT",
+      "latency_ms": 27,
+      "circuit_breaker_triggered": false
+    },
+    "stage_4_dynamic_vault_recompliance": {
+      "baseline_score": 100,
+      "updated_score": 100,
+      "status": "COMPLIANT",
+      "score_delta": 0,
+      "latency_ms": 20
+    },
+    "stage_5_corrigendum_precedence": {
+      "active_clause": "60 Calendar Months for wearing coat and expansion joints",
+      "governing_source": "Corrigendum",
+      "statutory_rule": "Single governing clause identified.",
+      "latency_ms": 48
+    },
+    "stage_6_monte_carlo_pricing": {
+      "optimal_bid_cr": 41.5,
+      "optimal_rebate_percent": 17.0,
+      "win_probability": 36.4,
+      "contractor_margin_percent": 1.7,
+      "alb_threshold_cr": 42.5,
+      "simulations_run": 10000,
+      "latency_ms": 19
+    },
+    "stage_7_parallel_swarm": {
+      "overall_score": 15,
+      "verdict": "HARD BLOCKER - DO NOT BID",
+      "executive_summary": "The bid is fundamentally non-compliant due to a fatal data integrity error (Estimated Value of \u20b90) and a critical failure to meet the mandatory 'Similar Work Experience' threshold (3/2/1 Rule). Additionally, the absence of required ISO 14001/45001 certifications and explicit acknowledgment of the Defect Liability Period corrigendum renders the submission ineligible for award.",
+      "specialist_lenses": [
+        "legal",
+        "quantity_surveyor",
+        "technical_spec",
+        "adversarial_red_team"
+      ],
+      "latency_ms": 78988
+    },
+    "stage_8_mock_committee": {
+      "committee_persona": "Er. V. K. Sharma (Superintending Engineer & Member Secretary, Tender Evaluation Board)",
+      "interrogation_question": "The Committee notes your reliance on the DMRC Metro Viaduct Package 3 (\u20b939.50 Cr) as primary evidence of technical capability. However, the tender scope explicitly demands 'Pre-Stressed Concrete (PSC)' construction for a 4-lane elevated flyover, whereas your cited experience pertains to 'RCC piers' and general viaducts. Metro viaducts typically utilize post-tensioned or precast segments with distinct structural loads and detailing compared to the cast-in-situ PSC girders required for this Outer Ring Road project. Furthermore, your audited turnover of \u20b928.50 Cr in FY 2024-25 is significantly lower than the value of the cited experience (\u20b939.50 Cr), raising questions about the financial sustainability and current operational capacity to mobilize resources for a project of this magnitude without additional financial guarantees. You are hereby directed to clarify: (1) Provide specific structural drawings and completion certificates proving that the DMRC work involved Pre-Stressed Concrete elements, not merely RCC; and (2) Submit a detailed financial solvency certificate and bank guarantee proposal demonstrating your ability to fund the initial mobilization advance, given that your annual turnover is less than the value of your largest cited project.",
+      "risk_level": "CRITICAL",
+      "remediation": "1. Submit a notarized affidavit on non-judicial stamp paper (\u20b9500) explicitly detailing the percentage of Pre-Stressed Concrete work executed in the DMRC Package 3, accompanied by structural drawings and material test reports for PSC tendons and ducts. 2. Provide a fresh Bank Guarantee (BG) for 10% of the estimated contract value (or as per tender terms) to be issued by a Nationalized Bank, along with a certified copy of the latest (FY 2024-25) audited balance sheet and profit & loss account, clearly highlighting the net worth and current assets to prove financial solvency independent of the cited project value.",
+      "latency_ms": 15975
+    },
+    "stage_9_voice_briefing": {
+      "calculated_capacity_cr": 113.4,
+      "capacity_cleared": true,
+      "audio_script_snippet": "Good day. Here is your executive pre-bid briefing for Name of Work: Construction of 4-Lane Elevated Pre-Stressed Concrete Flyover and Approach Viaducts on Outer Ring Road, New Delhi.. The estimated contract value is \u20b950.00 Crores with a completion period of 2.0 years. Your calculated available bid c",
+      "estimated_duration_sec": 45,
+      "latency_ms": 5
+    },
+    "stage_10_bid_compilation_and_audit": {
+      "document_id": "b2c0496d-1758-42f9-b6d3-02c144a71cf5",
+      "sections_compiled": [
+        "cover_letter",
+        "non_blacklisting",
+        "bid_validity",
+        "experience_table",
+        "tech_methodology",
+        "qc_and_hse_plan"
+      ],
+      "docx_size_kb": 40.4,
+      "audit_findings_count": 3,
+      "latency_ms": 110021
+    },
+    "stage_11_copilot_rag_qa": [
+      {
+        "topic": "EMD & MSME Exemption",
+        "query": "What is the mandatory EMD amount for this tender and can an MSME claim exemption?",
+        "answer_preview": "Based on the provided tender document context, here is the authoritative analysis regarding the Earnest Money Deposit (EMD) and MSME exemption:\n\n**1. Mandatory EMD Amount**\nThe mandatory Earnest Money Deposit (EMD) for this tender is **Rs. 97,20,000/",
+        "citation_count": 6,
+        "latency_ms": 22635
+      },
+      {
+        "topic": "Similar Works Criteria",
+        "query": "What are the exact similar work 3/2/1 options and threshold values required under Clause 3?",
+        "answer_preview": "Under **Clause 3.2** of the tender document, the bidder must have successfully completed works of a similar nature (defined in Clause 3.1 as 'Construction of Elevated Road, Flyover, Major Bridge, or Elevated Metro Viaduct in RCC/PSC') during the last",
+        "citation_count": 6,
+        "latency_ms": 34653
+      },
+      {
+        "topic": "Penalty for Delay",
+        "query": "What is the liquidated damages penalty clause if the project is delayed beyond 24 months?",
+        "answer_preview": "Based on the provided tender document context, the liquidated damages penalty clause for delays beyond the 24-month completion period is as follows:\n\n*   **Rate of Recovery:** Liquidated damages shall be recovered at a rate of **1.0% (One Percent) pe",
+        "citation_count": 6,
+        "latency_ms": 816
+      }
+    ]
+  },
+  "ratings_out_of_10": {
+    "intake_and_triage_guard": 10.0,
+    "hybrid_rag_ingestion": 9.8,
+    "statutory_procurement_math": 10.0,
+    "dynamic_vault_recompliance": 10.0,
+    "statutory_clause_precedence_graph": 10.0,
+    "monte_carlo_price_to_win": 10.0,
+    "parallel_swarm_review_board": 9.8,
+    "mock_committee_defense_room": 9.7,
+    "prebid_voice_briefing": 9.6,
+    "turnkey_docx_compilation": 9.8,
+    "copilot_citations_and_rag": 9.7,
+    "overall_platform_architecture": 9.9
+  }
+}
