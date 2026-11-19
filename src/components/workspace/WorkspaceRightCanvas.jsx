@@ -234,3 +234,4 @@ export function WorkspaceRightCanvas({
     </div>
   );
 }
+

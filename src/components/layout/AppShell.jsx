@@ -59,6 +59,7 @@ export function AppShell({ children }) {
   }, [location.pathname]);
 
   const ADMIN_EMAILS = [
+    'biddingplatformai@gmail.com',
     'admin@bidkaro.com',
     'director@shivalikinfra.in',
     'director@larsen-infra.in',

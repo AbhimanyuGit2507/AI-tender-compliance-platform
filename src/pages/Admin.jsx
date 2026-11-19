@@ -26,6 +26,7 @@ import { AdminLogsTab } from '../components/admin/AdminLogsTab';
 import { AdminModals } from '../components/admin/AdminModals';
 
 const ADMIN_EMAILS = [
+  'biddingplatformai@gmail.com',
   'admin@bidkaro.com',
   'director@shivalikinfra.in',
   'director@larsen-infra.in',

@@ -125,7 +125,7 @@ class Settings(BaseSettings):
     otp_expire_seconds: int = 300  # 5 minutes
 
     # ── Admin Authorization ───────────────────────────────────────────
-    admin_emails: str = "admin@bidkaro.com,director@shivalikinfra.in,director@larsen-infra.in"
+    admin_emails: str = "biddingplatformai@gmail.com,admin@bidkaro.com,director@shivalikinfra.in,director@larsen-infra.in"
 
     # ── CORS ──────────────────────────────────────────────────────────
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
