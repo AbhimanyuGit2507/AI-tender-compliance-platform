@@ -12,7 +12,7 @@ import uuid
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,6 +32,7 @@ MAX_UPLOAD_SIZE_MB = 50
 
 @router.post("/upload", status_code=status.HTTP_202_ACCEPTED)
 async def upload_tender(
+    background_tasks: BackgroundTasks,
     files: list[UploadFile] = File(...),
     tender_title: str = Form(default="Untitled Tender"),
     db: AsyncSession = Depends(get_db),
@@ -120,24 +121,47 @@ async def upload_tender(
         db.add(doc)
         await db.flush()
 
-        # Dispatch Celery task
-        task = ingest_document_task.apply_async(
-            kwargs={
-                "tenant_id": str(tenant_id),
-                "tender_id": str(tender.id),
-                "doc_id": str(doc.id),
-                "storage_key": storage_key,
-                "filename": file.filename,
-                "doc_category": category,
-                "is_corrigendum": is_corrigendum,
-            }
-        )
+        # Dispatch via Celery if Redis broker is reachable; otherwise run directly via BackgroundTasks
+        task_id = f"bg-{uuid.uuid4().hex[:12]}"
+        task_dispatched = False
+
+        from app.services.redis_events import is_redis_available
+        if is_redis_available():
+            try:
+                task = ingest_document_task.apply_async(
+                    kwargs={
+                        "tenant_id": str(tenant_id),
+                        "tender_id": str(tender.id),
+                        "doc_id": str(doc.id),
+                        "storage_key": storage_key,
+                        "filename": file.filename,
+                        "doc_category": category,
+                        "is_corrigendum": is_corrigendum,
+                    }
+                )
+                task_id = task.id
+                task_dispatched = True
+            except Exception as celery_err:
+                logger.warning("celery_dispatch_failed_using_background_tasks", error=str(celery_err))
+
+        if not task_dispatched:
+            from app.services.ingestion import run_direct_ingestion
+            background_tasks.add_task(
+                run_direct_ingestion,
+                tenant_id=str(tenant_id),
+                tender_id=str(tender.id),
+                doc_id=str(doc.id),
+                storage_key=storage_key,
+                filename=file.filename or "document",
+                doc_category=category,
+                is_corrigendum=is_corrigendum,
+            )
 
         uploaded_docs.append({
             "doc_id": str(doc.id),
             "filename": file.filename,
             "category": category,
-            "task_id": task.id,
+            "task_id": task_id,
             "size_mb": round(size_mb, 2),
         })
 

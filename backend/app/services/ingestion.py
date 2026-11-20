@@ -903,3 +903,84 @@ REQUIRED JSON STRUCTURE:
             ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             ".zip": "application/zip",
         }.get(ext, "application/octet-stream")
+
+
+async def run_direct_ingestion(
+    tenant_id: str,
+    tender_id: str,
+    doc_id: str,
+    storage_key: str,
+    filename: str,
+    doc_category: str,
+    is_corrigendum: bool = False,
+) -> dict[str, Any] | None:
+    """
+    Direct in-process execution of document ingestion via FastAPI BackgroundTasks.
+    Used when Celery / Redis is unavailable or in standalone web deployment.
+    """
+    from app.core.database import db_session
+    from app.models import Tender, TenderDocument
+    from app.services.redis_events import publish_tender_progress_sync
+    from app.services.storage import get_storage_backend
+    from sqlalchemy import update
+
+    logger.info("direct_ingestion_start", doc_id=doc_id, tender_id=tender_id, filename=filename)
+
+    def _progress_cb(step: str, percent: int, extra: dict | None = None):
+        publish_tender_progress_sync(
+            tender_id=tender_id,
+            step=step,
+            percent=percent,
+            extra=extra,
+        )
+
+    try:
+        storage = get_storage_backend()
+        file_content = await storage.get(storage_key)
+
+        async with db_session() as db:
+            engine = IngestionEngine(db)
+            result = await engine.ingest_document(
+                tenant_id=uuid.UUID(tenant_id),
+                tender_id=uuid.UUID(tender_id),
+                doc_id=uuid.UUID(doc_id),
+                file_content=file_content,
+                filename=filename,
+                doc_category=doc_category,
+                is_corrigendum=is_corrigendum,
+                on_progress=_progress_cb,
+            )
+
+            # Broadcast final completion if not invalid doc
+            if not result.get("is_invalid_doc"):
+                publish_tender_progress_sync(
+                    tender_id=tender_id,
+                    step="Analysis ready & readiness score calculation",
+                    percent=100,
+                    extra={"all_complete": True, "done": True},
+                )
+            logger.info("direct_ingestion_success", doc_id=doc_id, tender_id=tender_id)
+            return result
+    except Exception as exc:
+        logger.error("direct_ingestion_failed", doc_id=doc_id, tender_id=tender_id, error=str(exc))
+        publish_tender_progress_sync(
+            tender_id=tender_id,
+            step="failed",
+            percent=0,
+            error=str(exc),
+        )
+        try:
+            async with db_session() as db:
+                await db.execute(
+                    update(Tender)
+                    .where(Tender.id == uuid.UUID(tender_id))
+                    .values(status="FAILED")
+                )
+                await db.execute(
+                    update(TenderDocument)
+                    .where(TenderDocument.id == uuid.UUID(doc_id))
+                    .values(processing_status="error", processing_error=str(exc))
+                )
+        except Exception:
+            pass
+        return None

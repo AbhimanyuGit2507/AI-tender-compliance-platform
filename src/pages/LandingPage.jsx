@@ -641,8 +641,9 @@ export function LandingPage() {
                     gap: 16,
                     padding: '8px 16px',
                     borderRadius: 999,
-                    background: 'rgba(14,18,32,0.80)',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(14,18,32,0.80)',
+                    border: isLight ? '1px solid rgba(203, 213, 225, 0.85)' : '1px solid rgba(255,255,255,0.08)',
+                    boxShadow: isLight ? '0 4px 16px -2px rgba(15, 23, 42, 0.08)' : undefined,
                     backdropFilter: 'blur(12px)',
                     flexWrap: 'wrap',
                   }}
@@ -654,7 +655,7 @@ export function LandingPage() {
                   ].map((item, i) => (
                     <React.Fragment key={i}>
                       {i > 0 && (
-                        <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: 14 }}>·</span>
+                        <span style={{ color: isLight ? '#cbd5e1' : 'rgba(255,255,255,0.15)', fontSize: 14 }}>·</span>
                       )}
                       <span style={{ fontSize: 12 }}>
                         <span
@@ -666,7 +667,7 @@ export function LandingPage() {
                         >
                           {item.val}
                         </span>{' '}
-                        <span style={{ color: 'var(--text-tertiary)', fontWeight: 500 }}>
+                        <span style={{ color: isLight ? '#475569' : 'var(--text-tertiary)', fontWeight: 500 }}>
                           {item.label}
                         </span>
                       </span>
@@ -727,7 +728,7 @@ export function LandingPage() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div className="radar-beacon" />
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--font-mono)' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: isLight ? '#475569' : 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--font-mono)' }}>
                       LIVE NIT SCANNER // 312 PAGES PARSED
                     </span>
                   </div>
@@ -737,11 +738,11 @@ export function LandingPage() {
                       fontWeight: 700,
                       padding: '3px 10px',
                       borderRadius: 6,
-                      background: 'rgba(16, 185, 129, 0.16)',
-                      border: '1px solid rgba(16, 185, 129, 0.35)',
-                      color: '#34d399',
+                      background: isLight ? '#ecfdf5' : 'rgba(16, 185, 129, 0.16)',
+                      border: isLight ? '1px solid #a7f3d0' : '1px solid rgba(16, 185, 129, 0.35)',
+                      color: isLight ? '#065f46' : '#34d399',
                       fontFamily: 'var(--font-mono)',
-                      boxShadow: '0 0 12px rgba(16, 185, 129, 0.25)',
+                      boxShadow: isLight ? '0 1px 4px rgba(16, 185, 129, 0.15)' : '0 0 12px rgba(16, 185, 129, 0.25)',
                     }}
                   >
                     ✓ 88% PASS
@@ -749,49 +750,49 @@ export function LandingPage() {
                 </div>
 
                 {/* Tender Details Header */}
-                <div style={{ paddingBottom: 14, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, color: 'var(--accent-primary-hover)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'var(--font-mono)' }}>
+                <div style={{ paddingBottom: 14, borderBottom: isLight ? '1px solid rgba(15, 23, 42, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)', marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, color: isLight ? 'var(--accent-primary)' : 'var(--accent-primary-hover)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'var(--font-mono)' }}>
                     NHAI / TECH / 2026 / HW-409
                   </div>
                   <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginTop: 2, fontFamily: 'var(--font-heading)' }}>
                     4-Lane Greenfield Highway EPC Package-3
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3, fontFamily: 'var(--font-mono)' }}>
-                    Est. Value: <strong style={{ color: 'var(--text-primary)' }}>₹142.8 Cr</strong> · EMD: <strong style={{ color: '#34d399' }}>₹2.86 Cr</strong> · Closing: 14 Days
+                    Est. Value: <strong style={{ color: 'var(--text-primary)' }}>₹142.8 Cr</strong> · EMD: <strong style={{ color: isLight ? '#059669' : '#34d399' }}>₹2.86 Cr</strong> · Closing: 14 Days
                   </div>
                 </div>
 
                 {/* Compliance & Risk Clause Checks */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div className="clause-hud-capsule pass">
-                    <CheckCircle2 size={16} color="#10b981" style={{ marginTop: 2, flexShrink: 0 }} />
+                    <CheckCircle2 size={16} color={isLight ? '#059669' : '#10b981'} style={{ marginTop: 2, flexShrink: 0 }} />
                     <div style={{ fontSize: 12.5, lineHeight: 1.48 }}>
-                      <strong style={{ color: '#34d399' }}>EMD & MSME Exemption (GFR 170):</strong>{' '}
-                      <span style={{ color: 'var(--text-secondary)' }}>Full ₹2.86 Cr waiver verified via Udyam Registration.</span>
+                      <strong style={{ color: isLight ? '#065f46' : '#34d399' }}>EMD & MSME Exemption (GFR 170):</strong>{' '}
+                      <span style={{ color: isLight ? '#334155' : 'var(--text-secondary)' }}>Full ₹2.86 Cr waiver verified via Udyam Registration.</span>
                     </div>
                   </div>
 
                   <div className="clause-hud-capsule pass">
-                    <CheckCircle2 size={16} color="#10b981" style={{ marginTop: 2, flexShrink: 0 }} />
+                    <CheckCircle2 size={16} color={isLight ? '#059669' : '#10b981'} style={{ marginTop: 2, flexShrink: 0 }} />
                     <div style={{ fontSize: 12.5, lineHeight: 1.48 }}>
-                      <strong style={{ color: '#34d399' }}>Turnover Compliance:</strong>{' '}
-                      <span style={{ color: 'var(--text-secondary)' }}>Company 3-yr avg ₹182.4 Cr surpasses required ₹142.8 Cr (127%).</span>
+                      <strong style={{ color: isLight ? '#065f46' : '#34d399' }}>Turnover Compliance:</strong>{' '}
+                      <span style={{ color: isLight ? '#334155' : 'var(--text-secondary)' }}>Company 3-yr avg ₹182.4 Cr surpasses required ₹142.8 Cr (127%).</span>
                     </div>
                   </div>
 
                   <div className="clause-hud-capsule fail">
-                    <AlertTriangle size={16} color="#f43f5e" style={{ marginTop: 2, flexShrink: 0 }} />
+                    <AlertTriangle size={16} color={isLight ? '#dc2626' : '#f43f5e'} style={{ marginTop: 2, flexShrink: 0 }} />
                     <div style={{ fontSize: 12.5, lineHeight: 1.48 }}>
-                      <strong style={{ color: '#fb7185' }}>Clause 4.3(a) · JV Restriction:</strong>{' '}
-                      <span style={{ color: 'var(--text-secondary)' }}>Lead partner must hold ≥ 51% equity and fulfill ≥ 50% single work.</span>
+                      <strong style={{ color: isLight ? '#991b1b' : '#fb7185' }}>Clause 4.3(a) · JV Restriction:</strong>{' '}
+                      <span style={{ color: isLight ? '#334155' : 'var(--text-secondary)' }}>Lead partner must hold ≥ 51% equity and fulfill ≥ 50% single work.</span>
                     </div>
                   </div>
 
                   <div className="clause-hud-capsule warn">
-                    <AlertTriangle size={16} color="#f59e0b" style={{ marginTop: 2, flexShrink: 0 }} />
+                    <AlertTriangle size={16} color={isLight ? '#d97706' : '#f59e0b'} style={{ marginTop: 2, flexShrink: 0 }} />
                     <div style={{ fontSize: 12.5, lineHeight: 1.48 }}>
-                      <strong style={{ color: '#fbbf24' }}>Clause 8.1 · Defect Liability PBG:</strong>{' '}
-                      <span style={{ color: 'var(--text-secondary)' }}>5-year warranty requires 5% BG valid for 66 months.</span>
+                      <strong style={{ color: isLight ? '#92400e' : '#fbbf24' }}>Clause 8.1 · Defect Liability PBG:</strong>{' '}
+                      <span style={{ color: isLight ? '#334155' : 'var(--text-secondary)' }}>5-year warranty requires 5% BG valid for 66 months.</span>
                     </div>
                   </div>
                 </div>
@@ -801,20 +802,20 @@ export function LandingPage() {
                   style={{
                     marginTop: 14,
                     paddingTop: 12,
-                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderTop: isLight ? '1px solid rgba(15, 23, 42, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     fontSize: 11,
                     fontFamily: 'var(--font-mono)',
-                    color: 'var(--text-tertiary)',
+                    color: isLight ? '#475569' : 'var(--text-tertiary)',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Sparkles size={13} color="var(--accent-primary)" />
                     <span>Tender Copilot: 42 Clauses Cross-Checked</span>
                   </div>
-                  <span style={{ color: '#34d399', fontWeight: 600 }}>0 Disqualifiers</span>
+                  <span style={{ color: isLight ? '#059669' : '#34d399', fontWeight: 600 }}>0 Disqualifiers</span>
                 </div>
               </div>
             </motion.div>
@@ -1242,7 +1243,7 @@ export function LandingPage() {
                     selectedTenderId === t.id
                       ? 'rgba(99, 102, 241, 0.12)'
                       : 'var(--bg-surface)',
-                  color: selectedTenderId === t.id ? 'var(--accent-primary-light, #a5b4fc)' : 'var(--text-secondary)',
+                  color: selectedTenderId === t.id ? (isLight ? 'var(--accent-primary)' : 'var(--accent-primary-light, #a5b4fc)') : 'var(--text-secondary)',
                   fontWeight: 600,
                   fontSize: 13,
                   cursor: 'pointer',

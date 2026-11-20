@@ -29,6 +29,8 @@ celery_app.conf.update(
     task_track_started=True,
     task_acks_late=True,           # re-queue on worker crash
     worker_prefetch_multiplier=1,  # fair dispatch
+    broker_connection_retry_on_startup=False,
+    broker_connection_max_retries=1,
     task_routes={
         "app.workers.tasks_ingestion.*": {"queue": "fast"},
         "app.workers.tasks_generation.*": {"queue": "heavy"},
