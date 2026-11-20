@@ -241,10 +241,15 @@ def create_app() -> FastAPI:
     async def setup_db_tables(key: str = Query(...)):
         if key != settings.app_secret_key:
             raise HTTPException(status_code=403, detail="Invalid admin key")
+        from sqlalchemy import text
         from app.core.database import Base, get_engine
         import app.models  # noqa
         engine = get_engine()
         async with engine.begin() as conn:
+            # Enable essential PostgreSQL extensions for vector & trigram search
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm;"))
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"))
             await conn.run_sync(Base.metadata.create_all)
         return {"status": "tables_created", "tables": list(Base.metadata.tables.keys())}
 
