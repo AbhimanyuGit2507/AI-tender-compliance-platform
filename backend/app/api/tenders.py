@@ -531,6 +531,16 @@ async def delete_tender(
     if not tender:
         raise HTTPException(status_code=404, detail="Tender not found")
 
+    from app.models import ComplianceResult, GeneratedDocument, KnowledgeChunk, TenderDocument, TenderRequirement
+    from sqlalchemy import delete
+
+    # Delete related dependent child records first to satisfy foreign key constraints
+    await db.execute(delete(KnowledgeChunk).where(KnowledgeChunk.tender_id == tender_id))
+    await db.execute(delete(ComplianceResult).where(ComplianceResult.tender_id == tender_id))
+    await db.execute(delete(GeneratedDocument).where(GeneratedDocument.tender_id == tender_id))
+    await db.execute(delete(TenderRequirement).where(TenderRequirement.tender_id == tender_id))
+    await db.execute(delete(TenderDocument).where(TenderDocument.tender_id == tender_id))
+
     await db.delete(tender)
     await db.commit()
     return {"ok": True, "message": "Tender deleted successfully"}
@@ -595,6 +605,16 @@ async def transfer_tender_to_vault(
         db.add(sig_fact)
 
     # Remove the tender from the active tender pipeline
+    from app.models import ComplianceResult, GeneratedDocument, KnowledgeChunk, TenderDocument, TenderRequirement
+    from sqlalchemy import delete
+
+    # Delete related dependent child records first to satisfy foreign key constraints
+    await db.execute(delete(KnowledgeChunk).where(KnowledgeChunk.tender_id == tender_id))
+    await db.execute(delete(ComplianceResult).where(ComplianceResult.tender_id == tender_id))
+    await db.execute(delete(GeneratedDocument).where(GeneratedDocument.tender_id == tender_id))
+    await db.execute(delete(TenderRequirement).where(TenderRequirement.tender_id == tender_id))
+    await db.execute(delete(TenderDocument).where(TenderDocument.tender_id == tender_id))
+
     await db.delete(tender)
     await db.commit()
 
