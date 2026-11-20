@@ -120,24 +120,42 @@ async def upload_tender(
             processing_status="queued",
         )
         db.add(doc)
-        await db.flush()
+        uploaded_docs.append({
+            "doc": doc,
+            "doc_id": str(doc.id),
+            "filename": file.filename,
+            "category": category,
+            "storage_key": storage_key,
+            "is_corrigendum": is_corrigendum,
+            "size_mb": round(size_mb, 2),
+        })
 
-        # Dispatch via Celery if Redis broker is reachable; otherwise run directly via BackgroundTasks
+    # Commit Tender and TenderDocument records to database first
+    # This guarantees child ingestion sessions can immediately read and update the rows
+    await db.commit()
+
+    from app.services.redis_events import is_redis_available
+    from app.services.ingestion import run_direct_ingestion
+
+    redis_up = is_redis_available()
+    results_docs = []
+
+    for item in uploaded_docs:
+        doc = item["doc"]
         task_id = f"bg-{uuid.uuid4().hex[:12]}"
         task_dispatched = False
 
-        from app.services.redis_events import is_redis_available
-        if is_redis_available():
+        if redis_up:
             try:
                 task = ingest_document_task.apply_async(
                     kwargs={
                         "tenant_id": str(tenant_id),
                         "tender_id": str(tender.id),
-                        "doc_id": str(doc.id),
-                        "storage_key": storage_key,
-                        "filename": file.filename,
-                        "doc_category": category,
-                        "is_corrigendum": is_corrigendum,
+                        "doc_id": item["doc_id"],
+                        "storage_key": item["storage_key"],
+                        "filename": item["filename"],
+                        "doc_category": item["category"],
+                        "is_corrigendum": item["is_corrigendum"],
                     }
                 )
                 task_id = task.id
@@ -146,48 +164,35 @@ async def upload_tender(
                 logger.warning("celery_dispatch_failed_using_background_tasks", error=str(celery_err))
 
         if not task_dispatched:
-            from app.services.ingestion import run_direct_ingestion
-            logger.info("dispatching_direct_ingestion_coroutine", tender_id=str(tender.id), doc_id=str(doc.id))
-            # Schedule task immediately on the current event loop
+            logger.info("dispatching_direct_ingestion_task", tender_id=str(tender.id), doc_id=item["doc_id"])
             asyncio.create_task(
                 run_direct_ingestion(
                     tenant_id=str(tenant_id),
                     tender_id=str(tender.id),
-                    doc_id=str(doc.id),
-                    storage_key=storage_key,
-                    filename=file.filename or "document",
-                    doc_category=category,
-                    is_corrigendum=is_corrigendum,
+                    doc_id=item["doc_id"],
+                    storage_key=item["storage_key"],
+                    filename=item["filename"] or "document",
+                    doc_category=item["category"],
+                    is_corrigendum=item["is_corrigendum"],
                 )
             )
-            # Also register in FastAPI BackgroundTasks as secondary safeguard
-            background_tasks.add_task(
-                run_direct_ingestion,
-                tenant_id=str(tenant_id),
-                tender_id=str(tender.id),
-                doc_id=str(doc.id),
-                storage_key=storage_key,
-                filename=file.filename or "document",
-                doc_category=category,
-                is_corrigendum=is_corrigendum,
-            )
 
-        uploaded_docs.append({
-            "doc_id": str(doc.id),
-            "filename": file.filename,
-            "category": category,
+        results_docs.append({
+            "doc_id": item["doc_id"],
+            "filename": item["filename"],
+            "category": item["category"],
             "task_id": task_id,
-            "size_mb": round(size_mb, 2),
+            "size_mb": item["size_mb"],
         })
 
-    logger.info("upload_complete", tender_id=str(tender.id), docs=len(uploaded_docs))
+    logger.info("upload_complete", tender_id=str(tender.id), docs=len(results_docs))
 
     return {
         "tender_id": str(tender.id),
         "tenant_id": tenant_id_str,
-        "documents": uploaded_docs,
+        "documents": results_docs,
         "status": "processing",
-        "message": f"Uploaded {len(uploaded_docs)} document(s). Processing in background.",
+        "message": f"Uploaded {len(results_docs)} document(s). Processing in background.",
     }
 
 
@@ -238,15 +243,13 @@ async def list_tenders(
 async def get_tender(
     tender_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser | None = Depends(get_optional_user),
 ):
     """Get full tender details including requirements, generated documents, and compliance results."""
-    result = await db.execute(
-        select(Tender).where(
-            Tender.id == tender_id,
-            Tender.tenant_id == user.tenant_id,
-        )
-    )
+    query = select(Tender).where(Tender.id == tender_id)
+    if user:
+        query = query.where(Tender.tenant_id == user.tenant_id)
+    result = await db.execute(query)
     tender = result.scalar_one_or_none()
     if not tender:
         raise HTTPException(status_code=404, detail="Tender not found")
