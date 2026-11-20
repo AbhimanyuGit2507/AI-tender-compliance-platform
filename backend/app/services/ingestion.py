@@ -934,6 +934,22 @@ async def run_direct_ingestion(
             extra=extra,
         )
 
+    # Immediately mark as processing in DB so UI reflects active status
+    try:
+        async with db_session() as db:
+            await db.execute(
+                update(TenderDocument)
+                .where(TenderDocument.id == uuid.UUID(doc_id))
+                .values(processing_status="processing")
+            )
+            await db.execute(
+                update(Tender)
+                .where(Tender.id == uuid.UUID(tender_id))
+                .values(status="processing")
+            )
+    except Exception as stat_err:
+        logger.warning("direct_ingestion_status_init_warn", error=str(stat_err))
+
     try:
         storage = get_storage_backend()
         file_content = await storage.get(storage_key)
@@ -962,7 +978,9 @@ async def run_direct_ingestion(
             logger.info("direct_ingestion_success", doc_id=doc_id, tender_id=tender_id)
             return result
     except Exception as exc:
-        logger.error("direct_ingestion_failed", doc_id=doc_id, tender_id=tender_id, error=str(exc))
+        import traceback
+        tb = traceback.format_exc()
+        logger.error("direct_ingestion_failed", doc_id=doc_id, tender_id=tender_id, error=str(exc), traceback=tb)
         publish_tender_progress_sync(
             tender_id=tender_id,
             step="failed",
@@ -979,7 +997,7 @@ async def run_direct_ingestion(
                 await db.execute(
                     update(TenderDocument)
                     .where(TenderDocument.id == uuid.UUID(doc_id))
-                    .values(processing_status="error", processing_error=str(exc))
+                    .values(processing_status="error", processing_error=str(exc)[:500])
                 )
         except Exception:
             pass

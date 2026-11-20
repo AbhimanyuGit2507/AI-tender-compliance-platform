@@ -8,6 +8,7 @@ GET  /api/tenders/{id}/status — Poll ingestion status via SSE
 """
 from __future__ import annotations
 
+import asyncio
 import uuid
 from typing import Annotated
 
@@ -146,6 +147,20 @@ async def upload_tender(
 
         if not task_dispatched:
             from app.services.ingestion import run_direct_ingestion
+            logger.info("dispatching_direct_ingestion_coroutine", tender_id=str(tender.id), doc_id=str(doc.id))
+            # Schedule task immediately on the current event loop
+            asyncio.create_task(
+                run_direct_ingestion(
+                    tenant_id=str(tenant_id),
+                    tender_id=str(tender.id),
+                    doc_id=str(doc.id),
+                    storage_key=storage_key,
+                    filename=file.filename or "document",
+                    doc_category=category,
+                    is_corrigendum=is_corrigendum,
+                )
+            )
+            # Also register in FastAPI BackgroundTasks as secondary safeguard
             background_tasks.add_task(
                 run_direct_ingestion,
                 tenant_id=str(tenant_id),
@@ -451,6 +466,52 @@ async def tender_status_sse(
         media_type="text/event-stream",
         headers=headers,
     )
+
+
+@router.post("/{tender_id}/process")
+async def process_tender(
+    tender_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """
+    Trigger or retry background analysis for queued tender documents.
+    Runs direct ingestion in-process if Celery is not active.
+    """
+    res = await db.execute(
+        select(Tender).where(Tender.id == tender_id, Tender.tenant_id == user.tenant_id)
+    )
+    tender = res.scalar_one_or_none()
+    if not tender:
+        raise HTTPException(status_code=404, detail="Tender not found")
+
+    docs_res = await db.execute(
+        select(TenderDocument).where(TenderDocument.tender_id == tender_id)
+    )
+    docs = docs_res.scalars().all()
+    triggered = []
+
+    from app.services.ingestion import run_direct_ingestion
+    for d in docs:
+        asyncio.create_task(
+            run_direct_ingestion(
+                tenant_id=str(user.tenant_id),
+                tender_id=str(tender_id),
+                doc_id=str(d.id),
+                storage_key=d.storage_key,
+                filename=d.filename,
+                doc_category=d.doc_category,
+                is_corrigendum=d.is_corrigendum,
+            )
+        )
+        triggered.append(str(d.id))
+
+    return {
+        "ok": True,
+        "tender_id": str(tender_id),
+        "triggered_documents": triggered,
+        "message": f"Triggered analysis for {len(triggered)} document(s).",
+    }
 
 
 @router.delete("/{tender_id}", status_code=status.HTTP_200_OK)
