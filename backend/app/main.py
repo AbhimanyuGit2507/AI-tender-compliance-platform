@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 import redis.asyncio as aioredis
 import structlog
-from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi import FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
