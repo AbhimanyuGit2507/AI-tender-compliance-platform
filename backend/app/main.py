@@ -196,9 +196,22 @@ def create_app() -> FastAPI:
         return await call_next(request)
 
     # ── 3. CORS ───────────────────────────────────────────────────────
+    origins = settings.cors_origins_list
+    # Ensure production Vercel apps are always allowed
+    for default_origin in [
+        "https://bidkaro-jade.vercel.app",
+        "https://bidkaro-5jhwlhfxu-bidd3.vercel.app",
+        "https://bidkaro.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ]:
+        if default_origin not in origins:
+            origins.append(default_origin)
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins_list,
+        allow_origins=origins,
+        allow_origin_regex=r"https://.*\.vercel\.app",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
