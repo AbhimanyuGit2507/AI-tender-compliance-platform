@@ -103,12 +103,15 @@ def create_app() -> FastAPI:
         except Exception as exc:
             # Catch unhandled exceptions and return structured JSON
             duration_ms = (time.perf_counter() - start_time) * 1000
+            import traceback
+            tb_str = traceback.format_exc()
             logger.error(
                 "unhandled_server_exception",
                 request_id=request_id,
                 path=request.url.path,
                 method=request.method,
                 error=str(exc),
+                traceback=tb_str,
                 duration_ms=round(duration_ms, 2),
             )
             return JSONResponse(
@@ -116,6 +119,7 @@ def create_app() -> FastAPI:
                 content={
                     "error": "InternalServerError",
                     "message": "An unexpected error occurred. Please contact support with this Request ID.",
+                    "detail": str(exc),
                     "request_id": request_id,
                 },
                 headers={
