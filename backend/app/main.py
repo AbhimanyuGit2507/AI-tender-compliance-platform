@@ -236,6 +236,18 @@ def create_app() -> FastAPI:
     async def health():
         return {"status": "ok", "service": "BidKaro API", "version": "1.0.0"}
 
+    # ── Database Migration Trigger (Secure Admin Provisioning) ──────
+    @app.post("/api/admin/setup-db", tags=["admin"])
+    async def setup_db_tables(key: str = Query(...)):
+        if key != settings.app_secret_key:
+            raise HTTPException(status_code=403, detail="Invalid admin key")
+        from app.core.database import Base, get_engine
+        import app.models  # noqa
+        engine = get_engine()
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        return {"status": "tables_created", "tables": list(Base.metadata.tables.keys())}
+
     return app
 
 
